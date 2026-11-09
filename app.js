@@ -449,37 +449,51 @@ function signedOut(){if(cloud.channel){SB.removeChannel(cloud.channel);cloud.cha
 async function boot(){
   if(!SB){renderProfiles();return}
   let session=null;try{session=(await SB.auth.getSession()).data.session}catch(e){}
-  SB.auth.onAuthStateChange((ev,ses)=>{if(ses&&ses.user){if(!cloud.user||cloud.user.id!==ses.user.id)startCloud(ses.user)}else if(ev==="SIGNED_OUT")signedOut()});
+  SB.auth.onAuthStateChange((ev,ses)=>{if(ev==="PASSWORD_RECOVERY"){setTimeout(()=>renderLogin("newpass"),300)}if(ses&&ses.user){if(!cloud.user||cloud.user.id!==ses.user.id)startCloud(ses.user)}else if(ev==="SIGNED_OUT")signedOut()});
   if(session)startCloud(session.user);
   else{let skip=false;try{skip=localStorage.getItem("akvarium-skip-login")==="1"}catch(e){}if(skip){cloud.mode="local";setSync("Bez účtu: postup se ukládá jen v tomto zařízení");renderProfiles()}else renderLogin()}
 }
-function renderLogin(){
-  stopTank&&stopTank();screenName="login";
+function renderLogin(mode){
+  stopTank&&stopTank();screenName="login";mode=mode||"in";
   let email="";try{email=localStorage.getItem("akvarium-email")||""}catch(e){}
+  const reg=mode==="up",rec=mode==="newpass";
   app.innerHTML=`<div class="screen"><div class="welcome pad">
    <div class="logo">Rybičkové<br><span>akvárium</span></div>
    <div class="login">
-    <h2>Přihlášení rodiče</h2>
-    <p class="sub">Pošleme ti e-mail s přihlašovacím odkazem. Otevři ho na zařízení, kde se bude hrát. Postup dětí se uloží v účtu.</p>
-    <form id="f1" class="lform"><label class="field">E-mail<input id="em" type="email" autocomplete="email" inputmode="email" required value="${esc(email)}" placeholder="jmeno@email.cz"></label>
-     <button class="btn" id="send">Poslat odkaz</button></form>
-    <form id="f2" class="lform" hidden><p class="lead" id="sentTo"></p><label class="field">Kód z e-mailu (nepovinné)<input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" pattern="[0-9]*" placeholder="123456"></label>
-     <button class="btn kelp" id="verify">Přihlásit</button><button type="button" class="linkbtn" id="back">Změnit e-mail</button></form>
+    ${rec?`<h2>Nové heslo</h2><p class="sub">Zadej nové heslo k účtu.</p>`
+      :`<div class="seg" role="tablist"><button type="button" role="tab" id="tin" aria-selected="${!reg}">Přihlásit</button><button type="button" role="tab" id="tup" aria-selected="${reg}">Nový účet</button></div>
+    <p class="sub">${reg?"Účet zakládá rodič. Postup dětí se uloží v účtu a uvidíš ho na každém zařízení.":"Přihlášení rodiče. Stačí jednou na každém zařízení."}</p>`}
+    <form id="lf" class="lform">
+     ${rec?"":`<label class="field">E-mail<input id="em" type="email" autocomplete="username" inputmode="email" required value="${esc(email)}" placeholder="jmeno@email.cz"></label>`}
+     <label class="field">Heslo<span class="pw"><input id="pw" type="password" autocomplete="${reg||rec?"new-password":"current-password"}" required minlength="6" placeholder="${reg||rec?"Aspoň 6 znaků":"Heslo"}"><button type="button" class="eye" id="eye" aria-label="Zobrazit heslo">👁️</button></span></label>
+     ${reg||rec?`<label class="field">Heslo znovu<input id="pw2" type="password" autocomplete="new-password" required minlength="6"></label>`:""}
+     <button class="btn" id="go">${rec?"Uložit heslo":reg?"Vytvořit účet":"Přihlásit"}</button></form>
     <p class="say" id="lerr" role="alert"></p>
-    <button type="button" class="linkbtn" id="skip">Vyzkoušet bez účtu (jen toto zařízení)</button>
+    ${!reg&&!rec?`<button type="button" class="linkbtn" id="forgot">Zapomenuté heslo</button>`:""}
+    ${rec?"":`<button type="button" class="linkbtn" id="skip">Vyzkoušet bez účtu (jen toto zařízení)</button>`}
    </div></div></div>`;
   const err=t=>{$("#lerr").textContent=t||""};
-  $("#f1").onsubmit=async e=>{e.preventDefault();err("");const em=$("#em").value.trim();if(!em)return;$("#send").disabled=true;$("#send").textContent="Posílám…";
-    try{localStorage.setItem("akvarium-email",em)}catch(x){}
-    const {error}=await SB.auth.signInWithOtp({email:em,options:{shouldCreateUser:true,emailRedirectTo:location.origin+location.pathname}});
-    $("#send").disabled=false;$("#send").textContent="Poslat odkaz";
-    if(error){err(/rate|seconds|limit/i.test(error.message)?"E-mailů bylo moc najednou. Počkej chvíli a zkus to znovu.":"Kód se nepodařilo poslat: "+error.message);return}
-    $("#f1").hidden=true;$("#f2").hidden=false;$("#sentTo").textContent="E-mail jsme poslali na "+em+". Klikni v něm na odkaz (na tomto zařízení). Pokud e-mail obsahuje číselný kód, můžeš ho zadat sem.";setTimeout(()=>$("#code").focus(),50)};
-  $("#f2").onsubmit=async e=>{e.preventDefault();err("");const token=$("#code").value.replace(/\D/g,"");if(token.length<6){err("Kód má aspoň 6 číslic");return}
-    $("#verify").disabled=true;const {error}=await SB.auth.verifyOtp({email:$("#em").value.trim(),token,type:"email"});$("#verify").disabled=false;
-    if(error){err("Kód nesedí nebo vypršel. Zkontroluj ho, případně si pošli nový.");return}};
-  $("#back").onclick=()=>{$("#f2").hidden=true;$("#f1").hidden=false;err("")};
-  $("#skip").onclick=()=>{try{localStorage.setItem("akvarium-skip-login","1")}catch(x){}cloud.mode="local";S=readLocal(LKEY)||blank();setSync("Bez účtu: postup se ukládá jen v tomto zařízení");renderProfiles()};
+  const cz=m=>/invalid login/i.test(m)?"Špatný e-mail nebo heslo.":/already registered|already exists/i.test(m)?"Účet s tímto e-mailem už existuje. Přihlas se, nebo použij Zapomenuté heslo.":/at least|short|weak/i.test(m)?"Heslo je moc krátké nebo slabé, zkus delší.":/not confirmed/i.test(m)?"Nejdřív potvrď e-mail. Stačí kliknout na odkaz v e-mailu na mobilu nebo počítači, pak se tady přihlas heslem.":/rate|seconds|limit/i.test(m)?"Moc pokusů najednou. Chvilku počkej.":/fetch|network/i.test(m)?"Chybí internet. Zkus to znovu.":m;
+  $("#eye").onclick=()=>{["#pw","#pw2"].forEach(sel=>{const i=$(sel);if(i)i.type=i.type==="password"?"text":"password"})};
+  if($("#tin")){$("#tin").onclick=()=>renderLogin("in");$("#tup").onclick=()=>renderLogin("up")}
+  $("#lf").onsubmit=async e=>{e.preventDefault();err("");const pw=$("#pw").value;
+    if((reg||rec)&&pw!==$("#pw2").value){err("Hesla se neshodují.");return}
+    if(pw.length<6){err("Heslo musí mít aspoň 6 znaků.");return}
+    const btn=$("#go");btn.disabled=true;const label=btn.textContent;btn.textContent="Chvilku…";let res;
+    try{
+      if(rec)res=await SB.auth.updateUser({password:pw});
+      else{const em=$("#em").value.trim();try{localStorage.setItem("akvarium-email",em)}catch(x){}
+        res=reg?await SB.auth.signUp({email:em,password:pw}):await SB.auth.signInWithPassword({email:em,password:pw})}
+    }catch(x){res={error:{message:String(x&&x.message||x)}}}
+    btn.disabled=false;btn.textContent=label;
+    if(res.error){err(cz(res.error.message));return}
+    if(rec){toast("Heslo je změněné");if(cloud.user)renderProfiles();return}
+    if(reg&&res.data&&!res.data.session){renderLogin("in");setTimeout(()=>{$("#lerr").textContent="Účet je vytvořený. Poslali jsme ti potvrzovací e-mail: klikni na odkaz v něm (klidně na mobilu nebo počítači). Pak se tady přihlas e-mailem a heslem."},0);return}
+    try{localStorage.removeItem("akvarium-skip-login")}catch(x){}};
+  if($("#forgot"))$("#forgot").onclick=async()=>{const em=$("#em").value.trim();if(!em){err("Nejdřív napiš e-mail.");$("#em").focus();return}
+    const {error}=await SB.auth.resetPasswordForEmail(em,{redirectTo:location.origin+location.pathname});
+    err(error?cz(error.message):"Poslali jsme e-mail s odkazem na nové heslo. Můžeš ho otevřít na mobilu nebo počítači.")};
+  if($("#skip"))$("#skip").onclick=()=>{try{localStorage.setItem("akvarium-skip-login","1")}catch(x){}cloud.mode="local";S=readLocal(LKEY)||blank();setSync("Bez účtu: postup se ukládá jen v tomto zařízení");renderProfiles()};
 }
 function goLogin(){try{localStorage.removeItem("akvarium-skip-login")}catch(e){}renderLogin()}
 async function logout(){try{await flush()}catch(e){}await SB.auth.signOut()}
