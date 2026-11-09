@@ -27,12 +27,27 @@ const DAYS=[[1,"Po"],[2,"Út"],[3,"St"],[4,"Čt"],[5,"Pá"],[6,"So"],[0,"Ne"]];
 const ICONS=["⭐","🐱","🐶","🌱","📚","🎻","🧹","🧺","🍽️","🗑️","🚿","🦷","🎒","✏️","🧩","🏃","🚲","💤","👟","🧃","🎨","🤸","💌","🪴"];
 const MAX_PER_DAY=6;
 const MINIGAMES=[
- {id:"zuby",name:"Bacilí honička",icon:"🪥",desc:"2minutový časovač, bacily po čtvrtinách pusy"},
- {id:"pokoj",name:"Úklid do krabic",icon:"🧸",desc:"Přetahování věcí do správné krabice"},
+ {id:"zuby",name:"Bacilí honička",icon:"🪥",desc:"2min časovač, bacily po čtvrtinách pusy"},
+ {id:"pokoj",name:"Úklid do krabic",icon:"🧸",desc:"Hračky, oblečení, knížky do krabic"},
  {id:"jidlo",name:"Zdravý talíř",icon:"🥦",desc:"Skládání talíře, sladkosti odskočí"},
- {id:"postel",name:"Ustlaná postel",icon:"🛏️",desc:"Natáhnout peřinu, načechrat polštář"}
+ {id:"postel",name:"Ustlaná postel",icon:"🛏️",desc:"Natáhnout peřinu, načechrat polštář"},
+ {id:"plavba",name:"Plavba lodičky",icon:"⛵",desc:"Časovač: lodička pluje k pokladu"},
+ {id:"rutina",name:"Krok za krokem",icon:"✅",desc:"Obrázkový seznam kroků k odškrtnutí"},
+ {id:"trideni",name:"Třídění odpadu",icon:"♻️",desc:"Plast, papír, sklo, bio do barev"},
+ {id:"batoh",name:"Aktovka",icon:"🎒",desc:"Správné věci do aktovky podle dne"},
+ {id:"prostirani",name:"Prostírání",icon:"🍽️",desc:"Talíř, příbor a sklenička na místo"},
+ {id:"pena",name:"Mýdlová pěna",icon:"🧼",desc:"20 s drhnutí prstem po obrazovce"},
+ {id:"satnik",name:"Šatník",icon:"👕",desc:"Oblékání ve správném pořadí podle počasí"},
+ {id:"konvicka",name:"Konvička",icon:"🪴",desc:"Zalít akorát, ne moc a ne málo"},
+ {id:"miska",name:"Miska",icon:"🐱",desc:"Správná porce granulí a voda"},
+ {id:"lednice",name:"Lednička",icon:"🛒",desc:"Mrazák, lednice, nebo spíž"},
+ {id:"mycka",name:"Myčka",icon:"🫧",desc:"Nádobí do správného koše"},
+ {id:"rozcvicka",name:"Rozcvička",icon:"🤸",desc:"5 cviků po 15 sekundách"},
+ {id:"matika",name:"Mořská matika",icon:"🔢",desc:"5 příkladů podle úrovně"},
+ {id:"muslicka",name:"Srdíčková mušle",icon:"🐚",desc:"Výběr dobrého skutku pro rodiče"},
+ {id:"uspavani",name:"Uspávání",icon:"🌙",desc:"Zhasnout lampy, zatáhnout závěsy"}
 ];
-function kidTasks(k=kid){if(!k.tasks)k.tasks=TASKS.map(t=>({id:t.id,name:t.name,desc:t.desc,icon:t.icon,bg:t.bg,reward:t.reward,builtin:true,game:t.id,on:true,days:ALL_DAYS.slice()}));
+function kidTasks(k=kid){if(!k.tasks)k.tasks=TASKS.map(t=>({id:t.id,name:t.name,desc:t.desc,icon:t.icon,bg:t.bg,reward:t.reward,builtin:true,cat:t.id,game:t.id,on:true,days:ALL_DAYS.slice()}));
   k.tasks.forEach(t=>{if(t.game===undefined)t.game=t.builtin?t.id:null});return k.tasks}
 let curTask=null;
 function weekday(){const t=new Date();t.setDate(t.getDate()+(S.offset||0));return t.getDay()}
@@ -247,9 +262,10 @@ function startTank3D(wrap,opts){
   renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));renderer.outputEncoding=THREE.sRGBEncoding;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.0;
   renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   const scene=new THREE.Scene();
-  const {night,murk}=opts;
-  scene.background=gradTex(night?[[0,"#2a4f86"],[.6,"#13305a"],[1,"#081a33"]]:[[0,"#a6eef7"],[.45,"#3aa6cf"],[1,"#145a86"]]);
-  const fogCol=new THREE.Color(night?"#0f2a50":"#2f8fbf").lerp(new THREE.Color("#5a7a4a"),murk*.7);
+  const {night,murk}=opts;const TH=THEMES[opts.bg]||THEMES.utes;
+  scene.background=gradTex(night?[[0,"#2a4f86"],[.6,"#13305a"],[1,"#081a33"]]:[[0,TH.water[0]],[.45,TH.water[1]],[1,TH.water[2]]]);
+  {const bt=new THREE.CanvasTexture(backdropCanvas(opts.bg||"utes"));bt.encoding=THREE.sRGBEncoding;const back=new THREE.Mesh(new THREE.PlaneGeometry(44,16.5),new THREE.MeshBasicMaterial({map:bt,transparent:true,fog:false,depthWrite:false,color:night?0x6f7fa0:0xffffff}));back.position.set(0,1.6,-10.5);scene.add(back)}
+  const fogCol=new THREE.Color(night?"#0f2a50":TH.fog).lerp(new THREE.Color("#5a7a4a"),murk*.7);
   scene.fog=new THREE.Fog(fogCol,15-murk*7,40-murk*20);
   const cam=new THREE.PerspectiveCamera(38,1,.1,100);cam.position.set(0,1.2,15);cam.lookAt(0,.2,0);
   const key=lightRig(scene);key.castShadow=true;key.shadow.mapSize.set(1024,1024);Object.assign(key.shadow.camera,{left:-11,right:11,top:9,bottom:-6,near:1,far:30});key.shadow.radius=5;key.shadow.bias=-.0006;
@@ -257,7 +273,7 @@ function startTank3D(wrap,opts){
   // sand with caustics
   const sandG=new THREE.PlaneGeometry(44,18,90,36);sandG.rotateX(-Math.PI/2);const pa=sandG.attributes.position;
   for(let i=0;i<pa.count;i++){const x=pa.getX(i),z=pa.getZ(i);pa.setY(i,Math.sin(x*.45)*.18+Math.cos(z*.7+x*.2)*.12+Math.sin(x*1.7+z*1.3)*.04)}sandG.computeVertexNormals();
-  const sandM=new THREE.MeshStandardMaterial({color:"#e9c486",roughness:.95});const CU={t:{value:0},k:{value:night?.08:.24*(1-murk*.6)}};
+  const sandM=new THREE.MeshStandardMaterial({color:TH.sand,roughness:.95});const CU={t:{value:0},k:{value:night?.08:.24*(1-murk*.6)}};
   sandM.onBeforeCompile=sh=>{sh.uniforms.uT=CU.t;sh.uniforms.uK=CU.k;
     sh.vertexShader=sh.vertexShader.replace("#include <common>","#include <common>\nvarying vec3 vW;").replace("#include <begin_vertex>","#include <begin_vertex>\nvW=(modelMatrix*vec4(transformed,1.0)).xyz;");
     sh.fragmentShader=sh.fragmentShader.replace("#include <common>","#include <common>\nvarying vec3 vW;uniform float uT;uniform float uK;\nfloat caus(vec2 p,float t){float a=sin(p.x*2.1+t)+sin(p.y*2.4-t*1.1)+sin((p.x+p.y)*1.6+t*.7)+sin(length(p*1.2+vec2(3.))*2.2-t*1.3);a/=4.;return pow(1.-abs(a),7.);}")
@@ -271,13 +287,13 @@ function startTank3D(wrap,opts){
   for(let i=0;i<26;i++){const x=-8+((i*137)%160)/10,z=-1+((i*71)%30)/10-1.5;const p=new THREE.Mesh(SPH||(SPH=new THREE.SphereGeometry(1,48,32)),pebM[i%4]);p.scale.set(.18,.1,.14);p.position.set(x,sandY(x,z)+.05,z);p.castShadow=true;scene.add(p)}
   // plants
   const plants=[];const addPlant=(grp,x,z,s=1)=>{grp.position.set(x,sandY(x,z),z);grp.scale.setScalar(s);scene.add(grp);plants.push(grp)};
-  addPlant(makePlant("#2fae74",5,7),-7,-2.2,1.1);addPlant(makePlant("#4fcf8e",4,6),6.2,-2.8,1);addPlant(makePlant("#2a9a6a",4,5),-1,-5,1.2);
+  addPlant(makePlant(TH.plants[0],5,7),-7,-2.2,1.1);addPlant(makePlant(TH.plants[1],4,6),6.2,-2.8,1);addPlant(makePlant(TH.plants[2],4,5),-1,-5,1.2);
   // decor
   const decorObjs=[];const slots={rostlina:[-4.6,-1],koral:[-2,-2.2],hrad:[4.2,-2.6],truhla:[1.6,-.4]};
   (opts.decor||[]).forEach(id=>{const d=makeDecor(id);const [x,z]=slots[id];d.position.set(x,sandY(x,z),z);scene.add(d);decorObjs.push(d);if(d.children[0]&&d.children[0].userData.blades)plants.push(d.children[0])});
   // light rays
   const rayTex=(()=>{const cv=document.createElement("canvas");cv.width=64;cv.height=256;const c=cv.getContext("2d");const g=c.createLinearGradient(0,0,0,256);g.addColorStop(0,"rgba(255,255,235,1)");g.addColorStop(1,"rgba(255,255,235,0)");c.fillStyle=g;c.fillRect(0,0,64,256);c.globalCompositeOperation="destination-in";const h=c.createLinearGradient(0,0,64,0);h.addColorStop(0,"rgba(0,0,0,0)");h.addColorStop(.5,"rgba(0,0,0,1)");h.addColorStop(1,"rgba(0,0,0,0)");c.fillStyle=h;c.fillRect(0,0,64,256);return new THREE.CanvasTexture(cv)})();
-  const rays=[];for(let i=0;i<6;i++){const m=new THREE.Mesh(new THREE.PlaneGeometry(1.6,16),new THREE.MeshBasicMaterial({map:rayTex,transparent:true,opacity:night?.04:.13*(1-murk*.6),blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));m.position.set(-7+i*2.8,3,-4+(i%3));m.rotation.z=.28;scene.add(m);rays.push(m)}
+  const rays=[];for(let i=0;i<6;i++){const m=new THREE.Mesh(new THREE.PlaneGeometry(1.6,16),new THREE.MeshBasicMaterial({map:rayTex,transparent:true,opacity:night?.04:TH.rays*(1-murk*.6),blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));m.position.set(-7+i*2.8,3,-4+(i%3));m.rotation.z=.28;scene.add(m);rays.push(m)}
   // bubbles
   const BN=60;const bubM=new THREE.MeshPhysicalMaterial({color:"#ffffff",transparent:true,opacity:.4,roughness:0,clearcoat:1});
   const bub=new THREE.InstancedMesh(new THREE.SphereGeometry(1,14,10),bubM,BN);scene.add(bub);
@@ -313,7 +329,7 @@ function startTank3D(wrap,opts){
   const tmp=new THREE.Vector3();let last=performance.now();
   const loop=now=>{if(!T3||T3.renderer!==renderer)return;const dt=Math.min(.05,(now-last)/1000);last=now;const t=now/1000;CU.t.value=t;
     plants.forEach(p=>p.userData.blades.forEach(b=>b.chain.forEach((n,i)=>{n.rotation.z=Math.sin(t*1.3+b.ph+i*.5)*.09*(i?1:.4);n.rotation.x=Math.cos(t*.9+b.ph+i*.4)*.05})));
-    rays.forEach((m,i)=>{m.rotation.z=.28+Math.sin(t*.35+i)*.05;m.material.opacity=(night?.04:.13*(1-murk*.6))*(.7+.3*Math.sin(t*.8+i*1.7))});
+    rays.forEach((m,i)=>{m.rotation.z=.28+Math.sin(t*.35+i)*.05;m.material.opacity=(night?.04:TH.rays*(1-murk*.6))*(.7+.3*Math.sin(t*.8+i*1.7))});
     decorObjs.forEach(d=>{if(d.userData.glow)d.userData.glow.intensity=.6+.4*Math.sin(t*3)});
     if(egg){egg.userData.wob=Math.max(0,(egg.userData.wob||0)-dt*1.5);egg.rotation.z=Math.sin(t*2)*.05+Math.sin(t*25)*.25*egg.userData.wob;egg.position.y=sandY(0,.5)+.85+Math.abs(Math.sin(t*25))*.15*egg.userData.wob}
     // bubbles
@@ -348,7 +364,7 @@ function esc(s){return String(s).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;","
 let toastT;function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,2200)}
 let sheetClose=null,pendingRefresh=false;
 function openSheet(html,onClose){const p=$("#panel");p.innerHTML=html;$("#sheet").hidden=false;sheetClose=onClose||null;p.querySelectorAll("[data-close]").forEach(b=>b.onclick=closeSheet)}
-function closeSheet(){$("#sheet").hidden=true;$("#panel").innerHTML="";clearInterval(gameTimer);const f=sheetClose;sheetClose=null;if(f)f();if(pendingRefresh){pendingRefresh=false;refreshScreen()}}
+function closeSheet(){disposeViewers();$("#sheet").hidden=true;$("#panel").innerHTML="";clearInterval(gameTimer);const f=sheetClose;sheetClose=null;if(f)f();if(pendingRefresh){pendingRefresh=false;refreshScreen()}}
 $("#sheet").addEventListener("click",e=>{if(e.target.id==="sheet")closeSheet()});
 function head(t){return `<div class="panel-head"><h2>${t}</h2><button class="close" data-close aria-label="Zavřít">✕</button></div>`}
 function fishHTML(sp,cls=""){return PORTRAIT[sp]?`<img class="fimg ${cls}" src="${PORTRAIT[sp]}" alt="${esc(SPECIES[sp].name)}">`:`<canvas class="fimg ${cls}" data-sp="${sp}"></canvas>`}
@@ -500,8 +516,6 @@ function addKidFlow(){
   let av=0,pin=[];
   openSheet(head("Nový profil dítěte")+`<div class="center">
    <label class="field">Jméno nebo přezdívka<input id="kname" maxlength="16" placeholder="Např. Kuba"></label>
-   <p class="lead" style="margin-top:4px">Vyber rybku na profil. Vylíhne se jako první.</p>
-   <div class="avpick">${[0,1,2,3].map(i=>`<button data-av="${i}" aria-pressed="${i===0}">${fishHTML(i)}</button>`).join("")}</div>
    <p class="lead">Vyber 3 tajná zvířátka (PIN dítěte)</p>
    <div class="pin-dots" id="dots"><i></i><i></i><i></i></div>
    <div class="pin-grid">${PIN_SYMS.map((s,i)=>`<button data-i="${i}">${s}</button>`).join("")}</div>
@@ -509,9 +523,8 @@ function addKidFlow(){
   const P=$("#panel");hydrate(P);
   const check=()=>{$("#mk").disabled=!($("#kname").value.trim()&&pin.length===3)};
   $("#kname").oninput=check;
-  P.querySelectorAll(".avpick button").forEach(b=>b.onclick=()=>{av=+b.dataset.av;P.querySelectorAll(".avpick button").forEach(x=>x.setAttribute("aria-pressed",x===b))});
   P.querySelectorAll(".pin-grid button").forEach(b=>b.onclick=()=>{if(pin.length>=3)pin=[];pin.push(+b.dataset.i);[...$("#dots").children].forEach((d,i)=>d.textContent=pin[i]!=null?PIN_SYMS[pin[i]]:"");check()});
-  $("#mk").onclick=()=>{S.kids.push({id:"k"+Date.now().toString(36),name:$("#kname").value.trim(),av,pin,pearls:0,fish:[],eggs:0,decor:[],days:{},lastFed:"",created:dayKey(0)});save();closeSheet();renderProfiles();toast("Profil je hotový. Akvárium čeká na první rybku.")};
+  $("#mk").onclick=()=>{S.kids.push({id:"k"+Date.now().toString(36),name:$("#kname").value.trim(),av,pin,pearls:0,points:0,fishPts:0,fishEvery:15,fish:[],eggs:0,decor:[],days:{},lastFed:"",created:dayKey(0)});save();closeSheet();renderProfiles();toast("Profil je hotový. Při prvním otevření si dítě vybere akvárium a rybku.")};
 }
 
 function renderMain(){
@@ -529,7 +542,8 @@ function renderMain(){
   $("#parent").onclick=()=>parentGate(parentPanel);
   $("#tB").onclick=()=>{tab="board";showTab()};$("#tT").onclick=()=>{tab="tank";showTab()};
   showTab();
-  if(kid.eggs>0)setTimeout(hatch,300);
+  if(!kid.tank)setTimeout(()=>setupTank(true),300);
+  else if(kid.eggs>0)setTimeout(hatch,300);
 }
 function refreshChips(){const p=$("#pearls");if(p&&kid){p.textContent=kid.pearls;$("#streak").textContent=streak()}}
 function showTab(){
@@ -549,8 +563,7 @@ function renderBoard(){
      ${st==="pending"?'<span class="badge pending">Čeká na rodiče</span>':st==="confirmed"?'<span class="badge confirmed">Hotovo ✓</span>':""}
      <span class="ic" style="background:${t.bg||"#fff3d6"}">${t.icon}</span><h3>${esc(t.name)}</h3><p>${esc(t.desc||"")}</p>
      <span class="rw"><span class="pearl"></span> +${t.reward}</span></button>`}).join("")}</div>
-   <div class="golden"><div class="egg"></div><div>${first?`<h3>Tvoje první rybka je ještě ve vajíčku</h3><p>Splň jakýkoli úkol a nech ho potvrdit rodičem. Pak se vylíhne.</p>`
-     :`<h3>${d.golden?"Zlatá tabule! Rybka se vylíhla.":"Splň všechny úkoly"}</h3><p>${d.golden?"Zítra je tu nová tabule a nové vajíčko.":"Když rodič potvrdí všech "+list.length+" "+plural(list.length,"úkol","úkoly","úkolů")+", vylíhne se nová rybka."}</p>`}</div></div>`;
+   ${fishProgressHTML()}`;
   requestAnimationFrame(()=>{const p=$("#prog");if(p)p.style.width=(list.length?done/list.length*100:0)+"%"});
   $("#vBoard").querySelectorAll(".task").forEach(b=>b.onclick=()=>{const id=b.dataset.t,st=today().tasks[id];
     if(st==="confirmed"){toast("Tohle už máš dnes hotové");return}
@@ -648,9 +661,11 @@ function parentPanel(){
   const d=today();const pend=Object.keys(d.tasks).filter(id=>d.tasks[id]==="pending").map(findTask);
   openSheet(head("Rodičovský režim")+`<div class="center">
    <p class="lead">${esc(kid.name)}: ${pend.length?"tyhle úkoly čekají na potvrzení. Potvrď jen to, co dítě opravdu udělalo.":"nic nečeká na potvrzení."}</p>
-   <div class="plist">${pend.map(t=>`<div class="prow"><span class="ic">${t.icon}</span><span class="t">${esc(t.name)}<small>+${t.reward} ${plural(t.reward,"perlička","perličky","perliček")}</small></span><button class="btn kelp small" data-ok="${t.id}">Potvrdit</button><button class="btn ghost small" data-no="${t.id}">Vrátit</button></div>`).join("")}</div>
+   <div class="plist">${pend.map(t=>`<div class="prow"><span class="ic">${t.icon}</span><span class="t">${esc(t.name)}<small>+${t.reward} ${plural(t.reward,"bod","body","bodů")}${d.notes&&d.notes[t.id]?" · „"+esc(d.notes[t.id])+"“":""}</small></span><button class="btn kelp small" data-ok="${t.id}">Potvrdit</button><button class="btn ghost small" data-no="${t.id}">Vrátit</button></div>`).join("")}</div>
    ${pend.length>1?'<button class="btn kelp" id="all">Potvrdit vše</button>':""}
    <button class="btn sea" id="editT">Upravit úkoly pro ${esc(kid.name)}</button>
+   <div class="fishset"><b>Nová rybka každých</b><div class="stepper"><button id="fm" aria-label="Méně">−</button><span><b id="fv">${kid.fishEvery||15}</b> bodů</span><button id="fp" aria-label="Více">+</button></div>
+    <small>Body dítě dostává za potvrzené úkoly (podle odměny úkolu) a +${GOLD_BONUS} za splnění všech dnešních. Teď má ${kid.fishPts||0} z ${kid.fishEvery||15}.</small></div>
    ${accountHTML()}
    <h3 class="section-t" style="margin-bottom:0">Nástroje</h3>
    <div class="tools">${CFG.testTools?'<button class="btn ghost small" id="nextDay">Test: další den</button>':""}<button class="btn ghost small" id="gift">Odměna navíc +10 perliček</button>${cloud.user?'<button class="btn ghost small" id="logout">Odhlásit rodinu z tohoto zařízení</button>':""}<button class="btn ghost small" id="delKid">Smazat profil ${esc(kid.name)}</button></div>
@@ -660,6 +675,8 @@ function parentPanel(){
   P.querySelectorAll("[data-no]").forEach(b=>b.onclick=()=>{delete today().tasks[b.dataset.no];save();parentPanel()});
   if($("#all"))$("#all").onclick=()=>{pend.forEach(t=>confirmTask(t.id));parentPanel()};
   $("#editT").onclick=()=>taskEditor();
+  const setEvery=v=>{kid.fishEvery=Math.max(5,Math.min(100,v));$("#fv").textContent=kid.fishEvery;save()};
+  $("#fm").onclick=()=>setEvery((kid.fishEvery||15)-5);$("#fp").onclick=()=>setEvery((kid.fishEvery||15)+5);
   if($("#logout"))$("#logout").onclick=()=>{sheetClose=null;closeSheet();logout()};
   if($("#nextDay"))$("#nextDay").onclick=()=>{S.offset=(S.offset||0)+1;save();toast("Nový den, nová tabule");closeSheet()};
   $("#gift").onclick=()=>{kid.pearls+=10;save();refreshChips();toast("+10 perliček")};
@@ -676,16 +693,16 @@ function taskEditor(){
      <button class="switch" role="switch" aria-checked="${t.on}" data-tog="${i}" aria-label="${t.on?"Vypnout":"Zapnout"} ${esc(t.name)}"></button>
      <button class="btn ghost small" data-ed="${i}">Upravit</button></div>`).join("")}</div>
    <p class="hint" id="thint"></p>
-   <div class="tools"><button class="btn kelp" id="addT">Přidat vlastní úkol</button><button class="btn ghost" data-close>Hotovo</button></div></div>`,backToBoard);
+   <div class="tools"><button class="btn kelp" id="addC">Přidat z nabídky</button><button class="btn sea" id="addT">Vlastní úkol</button><button class="btn ghost" data-close>Hotovo</button></div></div>`,backToBoard);
   const P=$("#panel");
   P.querySelectorAll("[data-tog]").forEach(b=>b.onclick=()=>{const t=list[+b.dataset.tog];t.on=!t.on;const over=overLimit(list);if(over){t.on=!t.on;$("#thint").textContent="V "+over+" už je "+MAX_PER_DAY+" úkolů. Nejdřív jiný vypni nebo uber dny.";return}save();taskEditor()});
   P.querySelectorAll("[data-up]").forEach(b=>b.onclick=()=>{const i=+b.dataset.up;if(!i)return;[list[i-1],list[i]]=[list[i],list[i-1]];save();taskEditor()});
   P.querySelectorAll("[data-ed]").forEach(b=>b.onclick=()=>taskForm(+b.dataset.ed));
-  $("#addT").onclick=()=>taskForm(null);
+  $("#addT").onclick=()=>taskForm(null);$("#addC").onclick=()=>catalogSheet();
 }
 function taskForm(i){
   const list=kidTasks();const isNew=i==null;
-  const t=isNew?{id:"c"+Date.now().toString(36),name:"",desc:"",icon:"⭐",bg:"#fff3d6",reward:2,game:null,days:ALL_DAYS.slice(),on:true}:{...list[i],days:list[i].days.slice()};
+  const t=isNew?{id:"c"+Date.now().toString(36),name:"",desc:"",icon:"⭐",bg:"#fff3d6",reward:2,game:null,days:ALL_DAYS.slice(),on:true}:{...list[i],days:list[i].days.slice(),steps:list[i].steps?list[i].steps.slice():undefined};
   let lastGame=t.game||(t.builtin?t.id:"zuby");
   openSheet(head(isNew?"Nový úkol":"Upravit úkol")+`<div class="center">
    <label class="field">Název<input id="tn" maxlength="28" value="${esc(t.name)}" placeholder="Např. Nakrmit kočku"></label>
@@ -693,6 +710,7 @@ function taskForm(i){
    <p class="lead">Obrázek</p><div class="icons">${(ICONS.includes(t.icon)?ICONS:[t.icon].concat(ICONS)).map(ic=>`<button data-ic="${ic}" aria-pressed="${ic===t.icon}">${ic}</button>`).join("")}</div>
    <label class="check"><input type="checkbox" id="tg" ${t.game?"checked":""}><span>Obsahuje mini-hru</span></label>
    <div class="games" id="gpick" ${t.game?"":"hidden"}>${MINIGAMES.map(m=>`<button data-g="${m.id}" aria-pressed="${m.id===t.game}"><span>${m.icon}</span><b>${m.name}</b><small>${m.desc}</small></button>`).join("")}</div>
+   <div id="gparams"></div>
    <p class="hint" id="gnote">${t.game?"Dítě nejdřív zahraje mini-hru, pak úkol potvrdíš ty.":"Bez mini-hry dítě úkol odklikne podržením tlačítka, pak ho potvrdíš ty."}</p>
    <p class="lead">Odměna</p><div class="stepper"><button id="rm" aria-label="Méně">−</button><span><span class="pearl"></span><b id="rv">${t.reward}</b></span><button id="rp" aria-label="Více">+</button></div>
    <p class="lead">Které dny</p><div class="days">${DAYS.map(([n,l])=>`<button data-day="${n}" aria-pressed="${t.days.includes(n)}">${l}</button>`).join("")}</div>
@@ -702,14 +720,20 @@ function taskForm(i){
   const P=$("#panel");
   const paintDays=()=>P.querySelectorAll("[data-day]").forEach(b=>b.setAttribute("aria-pressed",t.days.includes(+b.dataset.day)));
   P.querySelectorAll("[data-ic]").forEach(b=>b.onclick=()=>{t.icon=b.dataset.ic;P.querySelectorAll("[data-ic]").forEach(x=>x.setAttribute("aria-pressed",x===b))});
-  const paintGames=()=>{$("#gpick").hidden=!t.game;P.querySelectorAll("[data-g]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.g===t.game));$("#gnote").textContent=t.game?"Dítě nejdřív zahraje mini-hru, pak úkol potvrdíš ty.":"Bez mini-hry dítě úkol odklikne podržením tlačítka, pak ho potvrdíš ty."};
+  const paramsHTML=()=>t.game==="plavba"?`<div class="fishset"><b>Délka plavby</b><div class="stepper"><button id="mm" aria-label="Méně">−</button><span><b id="mv">${t.minutes||10}</b> min</span><button id="mp" aria-label="Více">+</button></div></div>`
+    :t.game==="rutina"?`<label class="field">Kroky (každý na nový řádek)<textarea id="stps" rows="6">${esc((t.steps||["Krok 1","Krok 2","Krok 3"]).join("\n"))}</textarea></label>`
+    :t.game==="matika"?`<label class="field">Úroveň příkladů<select id="lvl"><option value="10" ${(t.level||"10")==="10"?"selected":""}>Sčítání a odčítání do 10</option><option value="20" ${t.level==="20"?"selected":""}>Sčítání a odčítání do 20</option><option value="nas" ${t.level==="nas"?"selected":""}>Malá násobilka</option></select></label>`:"";
+  const wireParams=()=>{$("#gparams").innerHTML=paramsHTML();if($("#mm")){$("#mm").onclick=()=>{t.minutes=Math.max(5,(t.minutes||10)-5);$("#mv").textContent=t.minutes};$("#mp").onclick=()=>{t.minutes=Math.min(60,(t.minutes||10)+5);$("#mv").textContent=t.minutes}}
+    if($("#lvl"))$("#lvl").onchange=e=>{t.level=e.target.value}};
+  const paintGames=()=>{wireParams();$("#gpick").hidden=!t.game;P.querySelectorAll("[data-g]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.g===t.game));$("#gnote").textContent=t.game?"Dítě nejdřív zahraje mini-hru, pak úkol potvrdíš ty.":"Bez mini-hry dítě úkol odklikne podržením tlačítka, pak ho potvrdíš ty."};
   $("#tg").onchange=e=>{if(e.target.checked){t.game=lastGame}else{if(t.game)lastGame=t.game;t.game=null}paintGames()};
   P.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{t.game=lastGame=b.dataset.g;paintGames()});
+  wireParams();
   $("#rm").onclick=()=>{t.reward=Math.max(1,t.reward-1);$("#rv").textContent=t.reward};
   $("#rp").onclick=()=>{t.reward=Math.min(5,t.reward+1);$("#rv").textContent=t.reward};
   P.querySelectorAll("[data-day]").forEach(b=>b.onclick=()=>{const n=+b.dataset.day;t.days=t.days.includes(n)?t.days.filter(x=>x!==n):t.days.concat(n);paintDays()});
   P.querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>{t.days=b.dataset.q==="all"?ALL_DAYS.slice():b.dataset.q==="wk"?[1,2,3,4,5]:[0,6];paintDays()});
-  $("#tsave").onclick=()=>{t.name=$("#tn").value.trim();t.desc=$("#td").value.trim();
+  $("#tsave").onclick=()=>{t.name=$("#tn").value.trim();t.desc=$("#td").value.trim();if($("#stps")){t.steps=$("#stps").value.split("\n").map(x=>x.trim()).filter(Boolean).slice(0,12);if(!t.steps.length){$("#fhint").textContent="Napiš aspoň jeden krok";return}}
     if(!t.name){$("#fhint").textContent="Napiš název úkolu";$("#tn").focus();return}
     if(!t.days.length){$("#fhint").textContent="Vyber aspoň jeden den";return}
     const next=list.slice();if(isNew)next.push(t);else next[i]=t;const over=overLimit(next);
@@ -717,10 +741,7 @@ function taskForm(i){
     if(isNew)list.push(t);else list[i]=t;save();toast(isNew?"Úkol přidán":"Uloženo");taskEditor()};
   let armed=false;if($("#tdel"))$("#tdel").onclick=()=>{if(!armed){armed=true;$("#fhint").textContent="Ťukni znovu pro smazání úkolu.";return}list.splice(i,1);const d=today();delete d.tasks[t.id];save();toast("Úkol smazán");taskEditor()};
 }
-function confirmTask(id){const d=today();if(d.tasks[id]!=="pending")return;d.tasks[id]="confirmed";const t=findTask(id);kid.pearls+=t.reward||1;
-  if(!kid.fish.length&&!kid.eggs)kid.eggs=1;
-  const list=todaysTasks();if(!d.golden&&list.length&&list.every(x=>d.tasks[x.id]==="confirmed")){d.golden=true;if(kid.fish.length)kid.eggs=(kid.eggs||0)+1}
-  save();refreshChips();blip(880)}
+
 
 /* ============ HATCH ============ */
 function pickSpecies(){if(!kid.fish.length)return kid.av;const st=streak();const r=Math.random();
@@ -729,15 +750,15 @@ function pickSpecies(){if(!kid.fish.length)return kid.av;const st=streak();const
 function hatch(){
   if(!kid||!(kid.eggs>0))return;
   const sp=pickSpecies();let taps=0;const first=!kid.fish.length;
-  openSheet(head(first?"Tvoje první rybka!":"Zlatá tabule!")+`<div class="center"><p class="lead">${first?"Rodič potvrdil tvůj první úkol.":"Všechny úkoly máš potvrzené."} Ťukej na vajíčko, ať se rybka vylíhne.</p>
+  openSheet(head(first?"Tvoje první rybka!":"Nová rybka!")+`<div class="center"><p class="lead">${first?"Rodič potvrdil tvůj první úkol.":"Nasbíral/a jsi dost bodů."} Ťukej na vajíčko, ať se rybka vylíhne.</p>
    <div id="eggzone"><button class="hatch-egg" id="egg" aria-label="vajíčko"><svg class="crack" viewBox="0 0 150 186"><path id="cr" d="" stroke="#a8740a" stroke-width="4" fill="none" stroke-linecap="round"/></svg></button></div></div>`);
   const cracks=["M40 70 L60 85 L50 100","M40 70 L60 85 L50 100 M110 60 L95 80 L108 95","M40 70 L60 85 L50 100 M110 60 L95 80 L108 95 M70 40 L78 60 L68 72"];
   $("#egg").onclick=()=>{taps++;const e=$("#egg");e.classList.remove("wob");void e.offsetWidth;e.classList.add("wob");blip(300+taps*150,.15,"triangle");
    if(taps<=3)$("#cr").setAttribute("d",cracks[taps-1]);
    if(taps===4){chime();confetti();const D=SPECIES[sp];
-    $("#eggzone").outerHTML=`<div class="reveal">${fishHTML(sp,"big")}</div><h3 style="font-size:1.7rem">${D.name}</h3><p class="lead">${D.rar} · ${D.fact}</p>
+    $("#eggzone").outerHTML=`<div class="reveal"><canvas class="viewer" id="fv"></canvas></div>${fishInfoHTML(sp)}
      <label class="field">Jak se bude jmenovat?<input id="fname" maxlength="14" placeholder="Jméno rybky"></label><button class="btn" id="keep">Pustit do akvária</button>`;
-    hydrate($("#panel"));
+    fishViewer($("#fv"),sp);
     $("#keep").onclick=()=>{kid.fish.push({sp,name:$("#fname").value.trim()||D.name,born:dayKey(0)});kid.eggs=Math.max(0,(kid.eggs||1)-1);save();sheetClose=null;closeSheet();
       if(kid.eggs>0){setTimeout(hatch,300);return}tab="tank";showTab();toast(D.name+" je v akváriu")};
    }};
@@ -745,25 +766,27 @@ function hatch(){
 
 /* ============ AQUARIUM ============ */
 let lastTankSig="";
-function tankSig(){return kid?kid.fish.map(f=>f.sp+f.name).join("|")+"#"+kid.decor.join(","):""}
+function tankSig(){return kid?kid.fish.map(f=>f.sp+f.name).join("|")+"#"+kid.decor.join(",")+"#"+JSON.stringify(kid.tank||{}):""}
 function stopTank(){stopTank3D();stopTank2D()}
 function renderTank(){
   stopTank();lastTankSig=tankSig();
   const fedToday=kid.lastFed===dayKey(0);const empty=!kid.fish.length;
   const hour=new Date().getHours();const night=hour>=20||hour<6;
   const murk=empty?0:Math.min(1,Math.max(0,daysSinceGolden()-1)/3);
-  $("#vTank").innerHTML=`<div class="tankwrap" id="tw"><canvas id="tank" aria-label="Akvárium s rybkami"></canvas><div class="fishname"></div>${empty?`<div class="tank-empty"><b>Akvárium čeká na první rybku</b><span>Splň úkol, rodič ho potvrdí a vajíčko se vylíhne.</span></div>`:""}</div>
-   <div class="tankbar"><button class="btn" id="feed" ${empty?"disabled":""}>${fedToday?"Přikrmit (1 perlička)":"Nakrmit rybky"}</button><span class="hint" id="mood"></span></div>
+  $("#vTank").innerHTML=`<div class="tankwrap shape-${kidTank().shape}" id="tw"><canvas id="tank" aria-label="Akvárium s rybkami"></canvas><div class="fishname"></div>${empty?`<div class="tank-empty"><b>Akvárium čeká na první rybku</b><span>Splň úkol, rodič ho potvrdí a vajíčko se vylíhne.</span></div>`:""}</div>
+   <div class="tankbar"><button class="btn" id="feed" ${empty?"disabled":""}>${fedToday?"Přikrmit (1 perlička)":"Nakrmit rybky"}</button><button class="btn ghost" id="tset">Upravit akvárium</button><span class="hint" id="mood"></span></div>
    <h3 class="section-t">Obchůdek s dekoracemi</h3>
    <div class="shop">${DECOR.map(d=>{const own=kid.decor.includes(d.id);return `<div class="item ${own?"own":""}"><canvas data-d="${d.id}"></canvas><b>${d.name}</b><button class="btn sea small" data-buy="${d.id}" ${own||kid.pearls<d.price?"disabled":""}>${own?"Máš":`<span style="display:inline-flex;align-items:center;gap:6px"><span class="pearl"></span>${d.price}</span>`}</button></div>`}).join("")}</div>
    <h3 class="section-t">Encyklopedie moře</h3>
-   <div class="dex">${SPECIES.map((s,i)=>{const has=kid.fish.some(f=>f.sp===i);return `<div class="card ${has?"":"locked"}">${fishHTML(i)}<b>${has?s.name:"???"}</b><small>${s.rar}</small></div>`}).join("")}</div>`;
+   <div class="dex">${SPECIES.map((s,i)=>{const has=kid.fish.some(f=>f.sp===i);return `<div class="card ${has?"":"locked"}" data-dex="${i}" role="button" tabindex="0">${fishHTML(i)}<b>${has?s.name:"???"}</b><small>${s.rar}</small></div>`}).join("")}</div>`;
   hydrate($("#vTank"));
+  $("#tset").onclick=()=>setupTank(false);
+  $("#vTank").querySelectorAll("[data-dex]").forEach(c=>c.onclick=()=>fishDetail(+c.dataset.dex));
   document.querySelectorAll("canvas[data-d]").forEach(cv=>decorIcon(cv,cv.dataset.d));
   document.querySelectorAll("[data-buy]").forEach(b=>b.onclick=()=>{const d=DECOR.find(x=>x.id===b.dataset.buy);if(kid.pearls<d.price)return;kid.pearls-=d.price;kid.decor.push(d.id);save();refreshChips();chime();toast(d.name+" je v akváriu");renderTank()});
   $("#feed").onclick=()=>{const fed=kid.lastFed===dayKey(0);if(fed){if(kid.pearls<1){toast("Nemáš perličku");return}kid.pearls--}kid.lastFed=dayKey(0);save();refreshChips();if(T3)T3.dropFood();else dropFood2D();$("#feed").textContent="Přikrmit (1 perlička)";blip(400,.2,"triangle")};
   $("#mood").textContent=empty?"Ťukni na vajíčko, třeba se pohne.":night?"Rybky spí. Dobrou noc!":murk>.5?"Voda je kalná. Splň úkoly a vyčistí se.":murk>0?"Voda se trochu kalí, rybky se těší na zlatou tabuli.":"Voda je křišťálová, rybky jsou spokojené.";
-  if(HAS3D){try{startTank3D($("#tw"),{fish:kid.fish,decor:kid.decor,night,murk});return}catch(e){stopTank3D()}}
+  if(HAS3D){try{startTank3D($("#tw"),{fish:kid.fish,decor:kid.decor,night,murk,bg:kidTank().bg});return}catch(e){stopTank3D()}}
   startTank2D(night,murk);
 }
 
@@ -789,13 +812,13 @@ function startTank2D(){
   const loop=now=>{if(!tankState)return;const dt=Math.min(.05,(now-last)/1000);last=now;const t=now/1000;
     if(cv.clientWidth!==W)fit();
     // water
-    let g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,"#8fe3f0");g.addColorStop(.45,"#2c97c4");g.addColorStop(1,"#0f4a72");c.fillStyle=g;c.fillRect(0,0,W,H);
+    const TH2=themeOf();let g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,TH2.water[0]);g.addColorStop(.45,TH2.water[1]);g.addColorStop(1,TH2.water[2]);c.fillStyle=g;c.fillRect(0,0,W,H);c.drawImage(backdropCanvas(kidTank().bg),0,H*.28,W,H*.58);
     // rays
     c.save();c.globalCompositeOperation="lighter";for(let i=0;i<5;i++){const x0=W*(.1+i*.22)+Math.sin(t*.4+i)*W*.04;const rg=c.createLinearGradient(0,0,0,H*.85);rg.addColorStop(0,"rgba(255,255,230,.16)");rg.addColorStop(1,"rgba(255,255,230,0)");c.fillStyle=rg;c.beginPath();c.moveTo(x0,0);c.lineTo(x0+W*.07,0);c.lineTo(x0+W*.2,H*.85);c.lineTo(x0+W*.06,H*.85);c.fill()}c.restore();
     // far plants silhouette
     c.fillStyle="rgba(10,60,90,.35)";for(let i=0;i<9;i++){const bx=W*i/8;c.beginPath();c.moveTo(bx-12,sandY(bx));c.quadraticCurveTo(bx+Math.sin(t+i)*14,H*.55,bx+Math.sin(t*1.2+i)*10,H*.5+((i*37)%40));c.quadraticCurveTo(bx+8,H*.65,bx+12,sandY(bx));c.fill()}
     // sand
-    const sg=c.createLinearGradient(0,H*.78,0,H);sg.addColorStop(0,"#f6dfae");sg.addColorStop(1,"#d3a967");c.fillStyle=sg;c.beginPath();c.moveTo(0,H);for(let x=0;x<=W;x+=10)c.lineTo(x,sandY(x));c.lineTo(W,H);c.fill();
+    const sg=c.createLinearGradient(0,H*.78,0,H);sg.addColorStop(0,TH2.sand2[0]);sg.addColorStop(1,TH2.sand2[1]);c.fillStyle=sg;c.beginPath();c.moveTo(0,H);for(let x=0;x<=W;x+=10)c.lineTo(x,sandY(x));c.lineTo(W,H);c.fill();
     // caustics on sand
     c.save();c.globalCompositeOperation="lighter";c.strokeStyle="rgba(255,255,255,.18)";c.lineWidth=2;for(let i=0;i<14;i++){const cx=(i*97+t*12)%W,cy=sandY(cx)+8+(i%3)*8;c.beginPath();c.ellipse(cx,cy,14+6*Math.sin(t*2+i),4,0,0,7);c.stroke()}c.restore();
     // pebbles
@@ -840,6 +863,369 @@ function startTank2D(){
 function dropFood2D(){tankState&&tankState.dropFood()}
 
 
+
+
+/* ============ EXTRAS: species info, themes, tanks ============ */
+const SP_INFO=[
+ {size:"5 cm",food:"vločky a drobné larvy",mood:"Zvědavá a hravá"},
+ {size:"3 cm",food:"mikro granule",mood:"Nejradši plave v hejnu"},
+ {size:"8 cm",food:"vločky a řasy",mood:"Klidná pohodářka"},
+ {size:"10 cm",food:"krevetky a granule",mood:"Odvážná, hlídá si domeček"},
+ {size:"15 cm",food:"krevety a mušličky",mood:"Lekavá, ale přátelská"},
+ {size:"15 cm",food:"larvy a vločky",mood:"Elegantní a vznešená"},
+ {size:"10 cm",food:"vločky a ovoce",mood:"Veselá a barevná"},
+ {size:"20 cm",food:"všechno, co přiláká lucernou",mood:"Tajemná noční lovkyně"}];
+const STARTERS=[0,1,2,3];
+const GOLD_BONUS=2;
+const TANKS=[{id:"klasik",name:"Klasické"},{id:"panorama",name:"Široké panorama"},{id:"koule",name:"Kulaté"},{id:"vysoke",name:"Vysoký sloup"}];
+function drawUtes(c,w,h){
+  const mound=(x,y,r,col)=>{c.fillStyle=col;c.beginPath();c.ellipse(x,y,r,r*.7,0,Math.PI,0);c.fill()};
+  [["rgba(255,140,170,.55)",.1],["rgba(255,170,110,.5)",.35],["rgba(190,120,220,.45)",.62],["rgba(255,120,140,.5)",.86]].forEach(([col,fx],i)=>{
+    mound(w*fx,h,h*(.32+i%2*.08),col);
+    c.strokeStyle=col;c.lineCap="round";
+    const br=(x,y,a,l,d)=>{if(d>4)return;const ex=x+Math.cos(a)*l,ey=y+Math.sin(a)*l;c.lineWidth=Math.max(2,14-d*3);c.beginPath();c.moveTo(x,y);c.lineTo(ex,ey);c.stroke();br(ex,ey,a-.45,l*.72,d+1);br(ex,ey,a+.4,l*.72,d+1)};
+    br(w*fx+h*.12,h*.82,-Math.PI/2,h*.16,0)});
+  c.fillStyle="rgba(255,210,120,.45)";[[.22,.8,26],[.5,.86,34],[.75,.78,22]].forEach(([x,y,r])=>{c.beginPath();c.arc(w*x,h*y,r,0,7);c.fill()});
+  c.strokeStyle="rgba(255,255,255,.35)";c.lineWidth=2;for(let i=0;i<8;i++){c.beginPath();c.arc(w*(.08+i*.12),h*(.55+i%3*.05),5+i%3*3,0,7);c.stroke()}
+}
+function drawDzungle(c,w,h){
+  for(let i=0;i<46;i++){const x=(i*97)%w,hh=h*(.35+((i*37)%50)/100);c.strokeStyle=i%3?"rgba(70,150,60,.5)":"rgba(120,190,80,.45)";c.lineWidth=6+(i%4)*2;c.lineCap="round";c.beginPath();c.moveTo(x,h);c.quadraticCurveTo(x+Math.sin(i)*40,h-hh*.5,x+Math.sin(i*1.7)*30,h-hh);c.stroke()}
+  c.strokeStyle="rgba(110,70,40,.65)";c.lineCap="round";[[.3,.95,.15,.55],[.62,.98,.72,.5],[.8,.96,.95,.62]].forEach(([x0,y0,x1,y1])=>{c.lineWidth=22;c.beginPath();c.moveTo(w*x0,h*y0);c.bezierCurveTo(w*(x0+.05),h*.6,w*(x1-.05),h*.7,w*x1,h*y1);c.stroke();c.lineWidth=9;c.beginPath();c.moveTo(w*x1,h*y1);c.lineTo(w*x1+30,h*y1-50);c.stroke()});
+  c.fillStyle="rgba(150,210,110,.5)";for(let i=0;i<5;i++){c.beginPath();c.ellipse(w*(.1+i*.2),h*.06,46,10,0,0,7);c.fill()}
+}
+function drawTrosky(c,w,h){
+  const col="rgba(200,220,240,.55)",dark="rgba(120,150,190,.5)";
+  [[.12,.62],[.24,.5],[.7,.55],[.86,.66]].forEach(([x,top],i)=>{const cx=w*x,cw=46;c.fillStyle=col;c.fillRect(cx-cw/2,h*top,cw,h*(1-top));c.fillStyle=dark;for(let k=-1;k<=1;k++)c.fillRect(cx+k*13-2,h*top+14,4,h*(1-top)-14);c.fillStyle=col;c.fillRect(cx-cw/2-10,h*top-14,cw+20,16);if(i===2){c.fillStyle="rgba(200,220,240,.4)";c.fillRect(cx-cw/2-10,h*top-26,cw+20,10)}});
+  c.strokeStyle=col;c.lineWidth=34;c.beginPath();c.arc(w*.47,h*.9,h*.36,Math.PI,Math.PI*1.75);c.stroke();
+  c.fillStyle="rgba(200,220,240,.5)";c.fillRect(w*.38,h*.9,w*.24,h*.1);c.fillRect(w*.4,h*.84,w*.2,h*.06);
+  c.fillStyle="rgba(160,190,220,.55)";c.beginPath();c.arc(w*.58,h*.95,30,Math.PI,0);c.fill();
+}
+function drawHlubina(c,w,h){
+  c.fillStyle="rgba(10,20,50,.7)";c.beginPath();c.moveTo(0,h);for(let x=0;x<=w;x+=40)c.lineTo(x,h*(.62+Math.sin(x*.013)*.12+Math.sin(x*.05)*.04));c.lineTo(w,h);c.fill();
+  for(let i=0;i<90;i++){const x=(i*131)%w,y=(i*71)%(h*.8),r=1+(i%4);const col=i%3?"rgba(120,230,255,":"rgba(255,240,140,";const g=c.createRadialGradient(x,y,0,x,y,r*4);g.addColorStop(0,col+".9)");g.addColorStop(1,col+"0)");c.fillStyle=g;c.beginPath();c.arc(x,y,r*4,0,7);c.fill()}
+  [[.3,.25],[.72,.18]].forEach(([fx,fy])=>{const x=w*fx,y=h*fy;c.fillStyle="rgba(200,160,255,.45)";c.beginPath();c.arc(x,y,26,Math.PI,0);c.fill();c.strokeStyle="rgba(200,160,255,.4)";c.lineWidth=3;for(let k=-2;k<=2;k++){c.beginPath();c.moveTo(x+k*9,y);c.quadraticCurveTo(x+k*9+8,y+30,x+k*9,y+60);c.stroke()}});
+}
+const THEMES={
+ utes:{name:"Korálový útes",water:["#a6eef7","#3aa6cf","#145a86"],fog:"#2f8fbf",sand:"#e9c486",sand2:["#f6dfae","#d3a967"],plants:["#2fae74","#4fcf8e","#2a9a6a"],rays:.13,draw:drawUtes},
+ dzungle:{name:"Říční džungle",water:["#cdf3c4","#4fa985","#1d5a48"],fog:"#3f8f6f",sand:"#b9925e",sand2:["#c9a571","#8f6a3e"],plants:["#3e9d3a","#6cc04a","#2c7a35"],rays:.16,draw:drawDzungle},
+ trosky:{name:"Potopené město",water:["#bfe6ff","#4f8fc9","#1d3f73"],fog:"#3f78b0",sand:"#cdbb94",sand2:["#efe6d2","#c4b79a"],plants:["#3fae8a","#5cc6a0","#2f8a74"],rays:.12,draw:drawTrosky},
+ hlubina:{name:"Hlubina",water:["#3a6fb0","#173f78","#060f2a"],fog:"#0d2350",sand:"#7f8aa6",sand2:["#8b96b0","#4f5975"],plants:["#2f7f9a","#45a3c0","#215f78"],rays:.05,draw:drawHlubina}};
+function kidTank(k=kid){return k.tank||{shape:"klasik",bg:"utes"}}
+function themeOf(k=kid){return THEMES[kidTank(k).bg]||THEMES.utes}
+const BACKDROP_CACHE={};
+function backdropCanvas(bg){if(BACKDROP_CACHE[bg])return BACKDROP_CACHE[bg];const cv=document.createElement("canvas");cv.width=1024;cv.height=384;(THEMES[bg]||THEMES.utes).draw(cv.getContext("2d"),1024,384);return BACKDROP_CACHE[bg]=cv}
+function themePreview(cv,bg){const T=THEMES[bg]||THEMES.utes;const r=Math.min(2,devicePixelRatio||1),w=cv.clientWidth||160,h=cv.clientHeight||110;cv.width=w*r;cv.height=h*r;const c=cv.getContext("2d");c.scale(r,r);
+  const g=c.createLinearGradient(0,0,0,h);g.addColorStop(0,T.water[0]);g.addColorStop(.5,T.water[1]);g.addColorStop(1,T.water[2]);c.fillStyle=g;c.fillRect(0,0,w,h);
+  c.drawImage(backdropCanvas(bg),0,h*.2,w,h*.62);
+  const s=c.createLinearGradient(0,h*.78,0,h);s.addColorStop(0,T.sand2[0]);s.addColorStop(1,T.sand2[1]);c.fillStyle=s;c.beginPath();c.moveTo(0,h);c.lineTo(0,h*.82);c.quadraticCurveTo(w/2,h*.74,w,h*.84);c.lineTo(w,h);c.fill();
+  drawFish(c,kid?kid.av||0:0,w*.5,h*.48,Math.min(w,h)*.42,1,1.2)}
+function hydratePreviews(root){root.querySelectorAll("canvas[data-theme]").forEach(cv=>themePreview(cv,cv.dataset.theme))}
+
+/* ============ EXTRAS: 3D fish viewer ============ */
+let VIEWERS=[];
+function disposeViewers(){VIEWERS.forEach(v=>v.dispose());VIEWERS=[]}
+function fishViewer(canvas,sp){
+  let alive=true,cur=sp,pop=1,yaw=-.5,vyaw=0,drag=null,t0=performance.now(),sq=0,blink=2;
+  if(!HAS3D){const loop=now=>{if(!alive)return;const r=Math.min(2,devicePixelRatio||1),w=canvas.clientWidth,h=canvas.clientHeight;if(canvas.width!==w*r){canvas.width=w*r;canvas.height=h*r}const c=canvas.getContext("2d");c.setTransform(r,0,0,r,0,0);c.clearRect(0,0,w,h);const tt=(now-t0)/1000;drawFish(c,cur,w/2,h/2+Math.sin(tt*2)*6,Math.min(w*.7,h*.8/SPECIES[cur].aspect),1,tt,{squash:sq});sq=Math.max(0,sq-.04);requestAnimationFrame(loop)};requestAnimationFrame(loop);
+    canvas.onpointerdown=()=>{sq=.8;blip(700,.1)};const v={set(s){cur=s},dispose(){alive=false}};VIEWERS.push(v);return v}
+  const r=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});r.setPixelRatio(Math.min(devicePixelRatio||1,2));r.outputEncoding=THREE.sRGBEncoding;r.toneMapping=THREE.ACESFilmicToneMapping;r.toneMappingExposure=1.05;
+  const scene=new THREE.Scene();lightRig(scene);const cam=new THREE.PerspectiveCamera(30,1,.1,50);
+  const shadow=new THREE.Mesh(new THREE.CircleGeometry(1.2,40),new THREE.MeshBasicMaterial({color:0x0b3b5a,transparent:true,opacity:.16,depthWrite:false}));shadow.rotation.x=-Math.PI/2;shadow.position.y=-1.25;scene.add(shadow);
+  const holder=new THREE.Group();scene.add(holder);let f=null;
+  function set(s){cur=s;if(f)holder.remove(f.g);f=makeFish(s);holder.add(f.g);const D=SPECIES[s];const hh=D.tall?1.55:D.lure?1.35:1;cam.position.set(0,.3*hh,5.4*Math.max(1,hh*.85));cam.lookAt(0,D.tall?.05:.12,0);pop=1}
+  set(sp);
+  canvas.style.touchAction="none";
+  canvas.onpointerdown=e=>{drag={x:e.clientX,moved:0};canvas.setPointerCapture(e.pointerId)};
+  canvas.onpointermove=e=>{if(!drag)return;const dx=e.clientX-drag.x;drag.x=e.clientX;drag.moved+=Math.abs(dx);vyaw=dx*.012;yaw+=dx*.012};
+  canvas.onpointerup=()=>{if(drag&&drag.moved<6){sq=1;blip(700,.1)}drag=null};
+  const loop=now=>{if(!alive)return;const w=canvas.clientWidth,h=canvas.clientHeight;if(w&&h&&(canvas.width!==Math.round(w*r.getPixelRatio())||canvas.height!==Math.round(h*r.getPixelRatio()))){r.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}
+    const t=(now-t0)/1000;if(!drag){vyaw*=.94;yaw+=vyaw+.004}
+    pop=Math.max(0,pop-.04);sq=Math.max(0,sq-.035);const s=1+Math.sin(sq*Math.PI)*.18;const p=1-Math.pow(pop,3)*.6;
+    holder.rotation.y=yaw;holder.position.y=Math.sin(t*1.6)*.08;holder.scale.set(p*s,p*(2-s),p);
+    f.tailPivot.rotation.y=Math.sin(t*5)*.35;f.pecs.forEach((q,i)=>q.rotation.y=(i?-1:1)*(.3+Math.sin(t*6)*.35));
+    blink-=.016;let ey=1;if(blink<0){ey=.1;if(blink<-.12)blink=2+Math.random()*3}f.eyes.forEach(e=>e.scale.y=ey);
+    r.render(scene,cam);requestAnimationFrame(loop)};
+  requestAnimationFrame(loop);
+  const v={set,dispose(){alive=false;try{r.dispose();r.forceContextLoss&&r.forceContextLoss()}catch(e){}}};VIEWERS.push(v);return v;
+}
+function fishInfoHTML(sp,name){const D=SPECIES[sp],I=SP_INFO[sp]||{};return `<div class="finfo"><h3>${name?esc(name)+" <small>("+D.name+")</small>":D.name}</h3><span class="rar rar-${D.rar.slice(0,3)}">${D.rar}</span>
+  <dl><div><dt>Velikost</dt><dd>${I.size||"?"}</dd></div><div><dt>Povaha</dt><dd>${I.mood||"?"}</dd></div><div><dt>Nejradši jí</dt><dd>${I.food||"?"}</dd></div></dl><p>${D.fact}</p></div>`}
+function fishDetail(sp){const own=kid.fish.filter(f=>f.sp===sp);
+  if(!own.length){toast("Tuhle rybku ještě nemáš. Sbírej body!");return}
+  openSheet(head("Encyklopedie moře")+`<div class="center"><canvas class="viewer" id="fv"></canvas><p class="hint">Otáčej rybkou prstem, ťuknutím ji polechtáš.</p>${fishInfoHTML(sp,own.map(f=>f.name).join(", "))}</div>`);
+  fishViewer($("#fv"),sp)}
+
+/* ============ EXTRAS: onboarding (tank, background, first fish) ============ */
+function setupTank(first){
+  const k=kid;const sel={shape:kidTank(k).shape,bg:kidTank(k).bg,sp:k.av||0};let step=1;const total=first&&!k.fish.length?3:2;
+  const after=()=>{if(kid){showTab();if(kid.eggs>0)setTimeout(hatch,300)}};
+  const render=()=>{disposeViewers();
+    if(step===1){openSheet(head(first?"Ahoj "+esc(k.name)+"! Vyber si akvárium":"Tvar akvária")+`<div class="center"><p class="steps-dot">Krok 1 z ${total}</p>
+      <div class="pick4">${TANKS.map(T=>`<button class="tankpick" data-shape="${T.id}" aria-pressed="${T.id===sel.shape}"><span class="mini-tank shape-${T.id}"><canvas data-theme="${sel.bg}"></canvas></span><b>${T.name}</b></button>`).join("")}</div>
+      <button class="btn" id="nx">Dál</button></div>`,first?after:after);
+      hydratePreviews($("#panel"));$("#panel").querySelectorAll("[data-shape]").forEach(b=>b.onclick=()=>{sel.shape=b.dataset.shape;blip(600);$("#panel").querySelectorAll("[data-shape]").forEach(x=>x.setAttribute("aria-pressed",x===b))});
+      $("#nx").onclick=()=>{step=2;render()}}
+    else if(step===2){openSheet(head("Vyber pozadí")+`<div class="center"><p class="steps-dot">Krok 2 z ${total}</p>
+      <div class="pick4">${Object.entries(THEMES).map(([id,T])=>`<button class="bgpick" data-bg="${id}" aria-pressed="${id===sel.bg}"><canvas data-theme="${id}"></canvas><b>${T.name}</b></button>`).join("")}</div>
+      <div class="tools"><button class="btn ghost" id="bk">Zpět</button><button class="btn" id="nx">${total===3?"Dál":"Hotovo"}</button></div></div>`,after);
+      hydratePreviews($("#panel"));$("#panel").querySelectorAll("[data-bg]").forEach(b=>b.onclick=()=>{sel.bg=b.dataset.bg;blip(650);$("#panel").querySelectorAll("[data-bg]").forEach(x=>x.setAttribute("aria-pressed",x===b))});
+      $("#bk").onclick=()=>{step=1;render()};
+      $("#nx").onclick=()=>{k.tank={shape:sel.shape,bg:sel.bg};if(total===3){step=3;render()}else{save();chime();sheetClose=null;closeSheet();renderTank();toast("Akvárium je upravené")}}}
+    else{let idx=Math.max(0,STARTERS.indexOf(sel.sp));
+      openSheet(head("Vyber svou první rybku")+`<div class="center"><p class="steps-dot">Krok 3 z 3</p>
+        <div class="viewerwrap"><button class="arrow" id="pv" aria-label="Předchozí rybka">‹</button><canvas class="viewer" id="fv"></canvas><button class="arrow" id="nv" aria-label="Další rybka">›</button></div>
+        <div class="dots">${STARTERS.map((s,i)=>`<i class="${i===idx?"on":""}"></i>`).join("")}</div>
+        <div id="finfo">${fishInfoHTML(STARTERS[idx])}</div>
+        <p class="hint">Rybka bude zatím ve vajíčku. Vylíhne se, až rodič potvrdí tvůj první úkol.</p>
+        <div class="tools"><button class="btn ghost" id="bk">Zpět</button><button class="btn kelp" id="ok">Tuhle chci!</button></div></div>`,after);
+      const v=fishViewer($("#fv"),STARTERS[idx]);
+      const show=d=>{idx=(idx+d+STARTERS.length)%STARTERS.length;v.set(STARTERS[idx]);blip(550+idx*60);$("#finfo").innerHTML=fishInfoHTML(STARTERS[idx]);$("#panel").querySelectorAll(".dots i").forEach((x,i)=>x.classList.toggle("on",i===idx))};
+      $("#pv").onclick=()=>show(-1);$("#nv").onclick=()=>show(1);$("#bk").onclick=()=>{step=2;render()};
+      $("#ok").onclick=()=>{k.av=STARTERS[idx];k.tank={shape:sel.shape,bg:sel.bg};save();chime();confetti();sheetClose=null;closeSheet();renderMain();toast("Hotovo! Teď splň první úkol.")}}
+  };
+  render();
+}
+
+/* ============ EXTRAS: points ============ */
+function addFishPts(n){kid.fishPts=(kid.fishPts||0)+n;const every=kid.fishEvery||15;while(kid.fishPts>=every){kid.fishPts-=every;kid.eggs=(kid.eggs||0)+1}}
+function confirmTask(id){const d=today();if(d.tasks[id]!=="pending")return;d.tasks[id]="confirmed";const t=findTask(id);const pts=t.reward||1;
+  kid.pearls+=pts;kid.points=(kid.points||0)+pts;
+  if(!kid.fish.length){if(!kid.eggs)kid.eggs=1}else addFishPts(pts);
+  const list=todaysTasks();if(!d.golden&&list.length&&list.every(x=>d.tasks[x.id]==="confirmed")){d.golden=true;kid.pearls+=GOLD_BONUS;kid.points+=GOLD_BONUS;if(kid.fish.length)addFishPts(GOLD_BONUS)}
+  save();refreshChips();blip(880)}
+function fishProgressHTML(){const every=kid.fishEvery||15,have=kid.fishPts||0;
+  if(!kid.fish.length)return `<div class="golden"><div class="egg"></div><div><h3>Tvoje první rybka je ještě ve vajíčku</h3><p>Splň jakýkoli úkol a nech ho potvrdit rodičem. Pak se vylíhne.</p></div></div>`;
+  const d=today();return `<div class="golden"><div class="egg"></div><div class="gp"><h3>Do další rybky: ${have} z ${every} bodů</h3><div class="fbar"><b style="width:${Math.min(100,have/every*100)}%"></b></div><p>${d.golden?"Zlatá tabule! Dnes +"+GOLD_BONUS+" body navíc.":"Za každý potvrzený úkol dostaneš body. Za splnění všech dnešních úkolů +"+GOLD_BONUS+" navíc."}</p></div></div>`}
+
+/* ============ EXTRAS: task catalog ============ */
+const CATALOG=[
+ {cat:"zuby",name:"Vyčistit zuby",desc:"2 minuty, všechny strany. Bacily pryč!",icon:"🪥",bg:"#dff3ff",reward:2,game:"zuby"},
+ {cat:"pokoj",name:"Uklidit pokoj",desc:"Hračky, oblečení i knížky na své místo.",icon:"🧸",bg:"#ffe8dc",reward:3,game:"pokoj"},
+ {cat:"jidlo",name:"Zdravý talíř",desc:"Zelenina, něco na sílu a příloha.",icon:"🥦",bg:"#e3f7e8",reward:2,game:"jidlo"},
+ {cat:"postel",name:"Ustlat postel",desc:"Srovnej peřinu a načechrej polštář.",icon:"🛏️",bg:"#efe6ff",reward:1,game:"postel"},
+ {cat:"rano",name:"Ranní rutina",desc:"Krok za krokem, ať je ráno v pohodě.",icon:"🌅",bg:"#fff1d6",reward:2,game:"rutina",steps:["Vyčůrat se","Umýt obličej","Vyčistit zuby","Obléct se","Učesat se","Nasnídat se"]},
+ {cat:"vecer",name:"Večerní rutina",desc:"Všechno, co patří před spaním.",icon:"🌙",bg:"#e6e4ff",reward:2,game:"rutina",steps:["Uklidit hračky","Osprchovat se","Vyčistit zuby","Obléct pyžamo","Připravit oblečení na zítra","Pohádka"]},
+ {cat:"odpad",name:"Vytřídit odpad",desc:"Plast, papír, sklo a bio do správných košů.",icon:"♻️",bg:"#e3f7e8",reward:2,game:"trideni"},
+ {cat:"aktovka",name:"Sbalit aktovku",desc:"Ať ráno nic nechybí.",icon:"🎒",bg:"#ffe8dc",reward:2,game:"batoh",days:[0,1,2,3,4]},
+ {cat:"stul",name:"Prostřít stůl",desc:"Talíř, příbor, sklenička.",icon:"🍽️",bg:"#fff3d6",reward:1,game:"prostirani"},
+ {cat:"ruce",name:"Umýt si ruce",desc:"Mýdlo, 20 vteřin, opláchnout.",icon:"🧼",bg:"#dff3ff",reward:1,game:"pena"},
+ {cat:"obleceni",name:"Obléct se",desc:"Ve správném pořadí a podle počasí.",icon:"👕",bg:"#efe6ff",reward:1,game:"satnik"},
+ {cat:"kytky",name:"Zalít květiny",desc:"Akorát, ať se neutopí.",icon:"🪴",bg:"#e3f7e8",reward:1,game:"konvicka"},
+ {cat:"zvire",name:"Nakrmit zvíře",desc:"Správná porce a čerstvá voda.",icon:"🐱",bg:"#fff3d6",reward:2,game:"miska"},
+ {cat:"nakup",name:"Vybalit nákup",desc:"Mrazák, lednice, nebo spíž?",icon:"🛒",bg:"#dff3ff",reward:2,game:"lednice"},
+ {cat:"nadobi",name:"Uklidit nádobí",desc:"Do myčky, nebo na místo.",icon:"🍽️",bg:"#e6e4ff",reward:2,game:"mycka"},
+ {cat:"pohyb",name:"Rozcvička",desc:"5 cviků s rybkou.",icon:"🤸",bg:"#ffe8dc",reward:2,game:"rozcvicka"},
+ {cat:"skola",name:"Úkoly do školy",desc:"Napřed úkoly, pak hraní.",icon:"✏️",bg:"#fff1d6",reward:3,game:"matika",days:[0,1,2,3,4],level:"10"},
+ {cat:"cteni",name:"Čtení",desc:"Lodička pluje, dokud čteš.",icon:"📚",bg:"#efe6ff",reward:3,game:"plavba",minutes:15},
+ {cat:"nastroj",name:"Cvičení na nástroj",desc:"Pár minut každý den.",icon:"🎻",bg:"#e6e4ff",reward:3,game:"plavba",minutes:15},
+ {cat:"radost",name:"Udělat někomu radost",desc:"Pomoc, pochvala nebo dárek.",icon:"💌",bg:"#ffe3ec",reward:2,game:"muslicka"},
+ {cat:"spani",name:"Jít spát včas",desc:"Zhasnout a dobrou noc.",icon:"💤",bg:"#e6e4ff",reward:1,game:"uspavani"}
+];
+function catalogSheet(){
+  const list=kidTasks();const have=new Set(list.map(t=>t.cat||t.id));
+  openSheet(head("Nabídka úkolů")+`<div class="center"><p class="lead">Ťukni na Přidat. Úkol se objeví v seznamu a můžeš mu pak upravit dny i odměnu.</p>
+   <div class="plist">${CATALOG.map(c=>`<div class="prow"><span class="ic">${c.icon}</span><span class="t">${c.name}<small>${(MINIGAMES.find(m=>m.id===c.game)||{}).name||""} · +${c.reward}${c.days?" · Po–Pá":""}</small></span><button class="btn ${have.has(c.cat)?"ghost":"kelp"} small" data-cat="${c.cat}" ${have.has(c.cat)?"disabled":""}>${have.has(c.cat)?"Máš":"Přidat"}</button></div>`).join("")}</div>
+   <p class="hint" id="chint"></p><button class="btn ghost" id="cdone">Zpět na úkoly</button></div>`,taskEditor);
+  $("#panel").querySelectorAll("[data-cat]").forEach(b=>b.onclick=()=>{const c=CATALOG.find(x=>x.cat===b.dataset.cat);
+    const t=Object.assign({},c,{id:"t"+Date.now().toString(36)+c.cat,on:true,days:(c.days||ALL_DAYS).slice(),steps:c.steps?c.steps.slice():undefined});
+    list.push(t);let note="Přidáno: "+c.name;if(overLimit(list)){t.on=false;note=c.name+" je přidaný, ale vypnutý: v některý den už je "+MAX_PER_DAY+" úkolů."}
+    save();blip(700);b.textContent="Máš";b.disabled=true;b.classList.replace("kelp","ghost");$("#chint").textContent=note});
+  $("#cdone").onclick=()=>taskEditor();
+}
+
+/* ============ EXTRAS: drag helper ============ */
+function makeDraggable(el,onDrop){
+  el.addEventListener("pointerdown",e=>{e.preventDefault();const sx=e.clientX,sy=e.clientY;let moved=false;el.setPointerCapture(e.pointerId);
+    const move=m=>{const dx=m.clientX-sx,dy=m.clientY-sy;if(!moved&&Math.hypot(dx,dy)>6){moved=true;el.classList.add("dragging")}if(moved){el.style.transform=`translate(${dx}px,${dy}px) scale(1.15)`;
+      document.querySelectorAll("[data-drop]").forEach(t=>{const r=t.getBoundingClientRect();t.classList.toggle("hot",m.clientX>r.left&&m.clientX<r.right&&m.clientY>r.top&&m.clientY<r.bottom)})}};
+    const up=u=>{el.removeEventListener("pointermove",move);el.removeEventListener("pointerup",up);el.removeEventListener("pointercancel",up);el.classList.remove("dragging");
+      let hit=null;document.querySelectorAll("[data-drop]").forEach(t=>{t.classList.remove("hot");const r=t.getBoundingClientRect();if(u.clientX>r.left&&u.clientX<r.right&&u.clientY>r.top&&u.clientY<r.bottom)hit=t});
+      el.style.transform="";
+      if(!moved){document.querySelectorAll(".dragitem.sel").forEach(x=>x!==el&&x.classList.remove("sel"));el.classList.toggle("sel");blip(520,.06);return}
+      if(hit){if(!onDrop(el,hit)){el.classList.remove("no");void el.offsetWidth;el.classList.add("no")}}};
+    el.addEventListener("pointermove",move);el.addEventListener("pointerup",up);el.addEventListener("pointercancel",up)});
+}
+function wireTapTargets(root,onDrop){root.querySelectorAll("[data-drop]").forEach(t=>t.addEventListener("click",()=>{const s=root.querySelector(".dragitem.sel");if(!s)return;s.classList.remove("sel");if(!onDrop(s,t)){s.classList.remove("no");void s.offsetWidth;s.classList.add("no")}}))}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+
+/* generic sorting game: items [emoji,label,cat], bins [cat,label,color,emoji] */
+function sortGame(title,lead,items,bins,wrongMsg,doneMsg){
+  const pick=shuffle(items).slice(0,8);let left=pick.length;
+  openSheet(head(title)+`<div class="center"><p class="lead">${lead}</p>
+   <div class="tray" id="tray">${pick.map((it,i)=>`<button class="dragitem" data-cat="${it[2]}" aria-label="${it[1]}"><span>${it[0]}</span><small>${it[1]}</small></button>`).join("")}</div>
+   <div class="bins4">${bins.map(b=>`<div class="bin" data-drop="${b[0]}" style="background:${b[2]}" role="button" tabindex="0"><span class="lid">${b[3]}</span>${b[1]}<span class="cnt">0</span></div>`).join("")}</div>
+   <div class="say" id="say">Táhni věc do koše, nebo na ni ťukni a pak na koš.</div></div>`);
+  const P=$("#panel");
+  const drop=(el,bin)=>{if(el.dataset.cat!==bin.dataset.drop){blip(220,.2,"square",.06);$("#say").textContent=wrongMsg;return false}
+    el.remove();blip(780);const c=bin.querySelector(".cnt");c.textContent=+c.textContent+1;bin.classList.remove("pulse");void bin.offsetWidth;bin.classList.add("pulse");left--;
+    $("#say").textContent=left?"Správně! Ještě "+left+".":doneMsg;if(!left)setTimeout(()=>finishTask(curTask),800);return true};
+  P.querySelectorAll(".dragitem").forEach(el=>makeDraggable(el,drop));wireTapTargets(P,drop);
+}
+
+/* ============ EXTRAS: new mini-games ============ */
+Object.assign(GAMES,{
+ trideni(){sortGame("Třídění odpadu","Každá věc patří do svého kontejneru.",[
+   ["🥤","Kelímek","plast"],["🧴","Lahev od šamponu","plast"],["🛍️","Igelitka","plast"],["🥡","Krabička od jídla","plast"],
+   ["📰","Noviny","papir"],["📦","Krabice","papir"],["📄","Papír","papir"],["📒","Starý sešit","papir"],
+   ["🫙","Sklenice","sklo"],["🍾","Skleněná lahev","sklo"],
+   ["🍌","Slupka od banánu","bio"],["🍎","Ohryzek","bio"],["🥚","Skořápky","bio"],["🥕","Natě od mrkve","bio"]],
+   [["plast","Plast","#e3b10a","🟡"],["papir","Papír","#2f6fdf","🔵"],["sklo","Sklo","#2f9e5a","🟢"],["bio","Bio","#8a5a2b","🟤"]],
+   "Tohle patří do jiné barvy","Všechno vytříděno! Planeta děkuje.")},
+ lednice(){sortGame("Vybalit nákup","Kam patří co? Do mrazáku, do lednice, nebo do spíže?",[
+   ["🍦","Zmrzlina","mraz"],["🧊","Led","mraz"],["🫛","Mražený hrášek","mraz"],["🍕","Mražená pizza","mraz"],
+   ["🥛","Mléko","led"],["🧀","Sýr","led"],["🧈","Máslo","led"],["🥚","Vajíčka","led"],["🍓","Jahody","led"],
+   ["🍝","Těstoviny","spiz"],["🍚","Rýže","spiz"],["🥫","Konzerva","spiz"],["🍪","Sušenky","spiz"],["🍯","Med","spiz"]],
+   [["mraz","Mrazák","#5fb4ef","❄️"],["led","Lednice","#3f8fb0","🧊"],["spiz","Spíž","#c98a4a","🗄️"]],
+   "Tady by se to zkazilo nebo rozmrzlo","Nákup je uklizený!")},
+ mycka(){sortGame("Uklidit nádobí","Velké dolů, hrnky a skleničky nahoru, příbory do košíčku.",[
+   ["🍽️","Talíř","dole"],["🍳","Pánev","dole"],["🍲","Hrnec","dole"],["🥘","Mísa","dole"],
+   ["☕","Hrnek","nahore"],["🍵","Šálek","nahore"],["🥛","Sklenička","nahore"],["🧋","Kelímek","nahore"],
+   ["🥄","Lžíce","kosik"],["🍴","Vidlička","kosik"],["🥢","Hůlky","kosik"]],
+   [["dole","Spodní koš","#3f6fb0","⬇️"],["nahore","Horní koš","#4fa3c9","⬆️"],["kosik","Košík na příbory","#8a7ad6","🧺"]],
+   "Tohle se dává jinam","Myčka je naplněná!")},
+ batoh(){
+  const wd=weekday();const need=[["📚","Učebnice"],["📓","Sešit"],["✏️","Penál"],["🥪","Svačina"],["🧃","Pití"]];if(wd===1||wd===3)need.push(["👟","Cvičky na tělocvik"]);if(wd===5)need.push(["🎨","Výtvarka"]);
+  const decoy=[["🧸","Plyšák"],["🎮","Herní konzole"],["🍬","Bonbóny"],["⚽","Míč"],["🦖","Dinosaurus"]];
+  const all=shuffle(need.map(x=>[...x,1]).concat(shuffle(decoy).slice(0,3).map(x=>[...x,0])));let left=need.length;
+  openSheet(head("Sbalit aktovku")+`<div class="center"><p class="lead">Dnes potřebuješ tyhle věci. Ťukni na ně a dej je do aktovky.</p>
+   <div class="needlist">${need.map(n=>`<span data-need="${n[1]}">${n[0]} ${n[1]}</span>`).join("")}</div>
+   <div class="bagzone"><span class="bag" id="bag">🎒</span></div>
+   <div class="foods">${all.map((x,i)=>`<button class="food big" data-i="${i}" aria-label="${x[1]}">${x[0]}</button>`).join("")}</div>
+   <div class="say" id="say"></div><p class="hint">Teď to samé udělej doopravdy se svou aktovkou.</p></div>`);
+  $("#panel").querySelectorAll("[data-i]").forEach(b=>b.onclick=()=>{const it=all[+b.dataset.i];
+    if(!it[2]){b.classList.remove("no");void b.offsetWidth;b.classList.add("no");blip(220,.2,"square",.06);$("#say").textContent=it[1]+" do školy nepatří";return}
+    b.classList.add("used");blip(760);const bag=$("#bag");bag.classList.remove("gulp");void bag.offsetWidth;bag.classList.add("gulp");$(`[data-need="${it[1]}"]`).classList.add("ok");left--;
+    $("#say").textContent=left?"Ještě "+left:"Aktovka je sbalená!";if(!left)setTimeout(()=>finishTask(curTask),800)});
+ },
+ prostirani(){
+  const parts=[["talir","🍽️","Talíř"],["vidlicka","🍴","Vidlička"],["nuz","🔪","Nůž"],["lzice","🥄","Lžíce"],["sklenice","🥛","Sklenička"],["ubrousek","🧻","Ubrousek"]];let left=parts.length;
+  openSheet(head("Prostřít stůl")+`<div class="center"><p class="lead">Dej každou věc na její místo. Vidlička vlevo, nůž a lžíce vpravo.</p>
+   <div class="placemat">${parts.map(p=>`<div class="pslot ps-${p[0]}" data-drop="${p[0]}"><span>${p[1]}</span></div>`).join("")}</div>
+   <div class="tray small">${shuffle(parts).map(p=>`<button class="dragitem" data-cat="${p[0]}" aria-label="${p[2]}"><span>${p[1]}</span><small>${p[2]}</small></button>`).join("")}</div>
+   <div class="say" id="say"></div></div>`);
+  const P=$("#panel");
+  const drop=(el,slot)=>{if(el.dataset.cat!==slot.dataset.drop){blip(220,.2,"square",.06);$("#say").textContent="Tohle místo patří něčemu jinému";return false}
+    slot.classList.add("full");el.remove();blip(800);left--;$("#say").textContent=left?"Paráda!":"Stůl je prostřený jako v restauraci!";if(!left)setTimeout(()=>finishTask(curTask),800);return true};
+  P.querySelectorAll(".dragitem").forEach(el=>makeDraggable(el,drop));wireTapTargets(P,drop);
+ },
+ pena(){
+  const NEED=20;let scrub=0,last=null,done=false;
+  openSheet(head("Umýt si ruce")+`<div class="center"><p class="lead">Namydli si ruce a drhni. Prstem drhni i tady, dokud se nenaplní bublina.</p>
+   <div class="soap"><canvas id="soap"></canvas><span class="hands">🙌</span></div>
+   <div class="fbar wide"><b id="sb"></b></div><div class="say" id="say">Drhni prstem po obrázku</div>
+   <button class="btn kelp" id="rinse" hidden>Opláchnuto a utřeno!</button></div>`);
+  const cv=$("#soap"),c=cv.getContext("2d");const R=Math.min(2,devicePixelRatio||1);const W=cv.clientWidth,H=cv.clientHeight;cv.width=W*R;cv.height=H*R;c.scale(R,R);
+  const bubbles=[];let tick=0;
+  const draw=()=>{if(!cv.isConnected)return;c.clearRect(0,0,W,H);bubbles.forEach(b=>{b.a-=.004;b.y-=.2;c.globalAlpha=Math.max(0,b.a);c.fillStyle="rgba(255,255,255,.55)";c.strokeStyle="rgba(140,200,255,.9)";c.lineWidth=1.5;c.beginPath();c.arc(b.x,b.y,b.r,0,7);c.fill();c.stroke();c.fillStyle="#fff";c.beginPath();c.arc(b.x-b.r*.3,b.y-b.r*.3,b.r*.25,0,7);c.fill()});c.globalAlpha=1;for(let i=bubbles.length-1;i>=0;i--)if(bubbles[i].a<=0)bubbles.splice(i,1);requestAnimationFrame(draw)};draw();
+  cv.style.touchAction="none";
+  cv.onpointerdown=e=>{last={x:e.offsetX,y:e.offsetY,t:performance.now()};cv.setPointerCapture(e.pointerId)};
+  cv.onpointermove=e=>{if(!last||done)return;const now=performance.now(),d=Math.hypot(e.offsetX-last.x,e.offsetY-last.y);if(d>2){scrub+=Math.min(.1,(now-last.t)/1000);for(let i=0;i<2;i++)bubbles.push({x:e.offsetX+(Math.random()-.5)*30,y:e.offsetY+(Math.random()-.5)*30,r:4+Math.random()*12,a:1});
+      if(++tick%14===0)blip(900+Math.random()*400,.05,"sine",.04)}last={x:e.offsetX,y:e.offsetY,t:now};
+    const p=Math.min(1,scrub/NEED);$("#sb").style.width=p*100+"%";$("#say").textContent=p<1?Math.ceil(NEED-scrub)+" s drhnutí":"Super pěna!";
+    if(p>=1&&!done){done=true;chime();$("#rinse").hidden=false;$("#say").textContent="Teď ruce opláchni a utři."}};
+  cv.onpointerup=()=>{last=null};
+  $("#rinse").onclick=()=>finishTask(curTask);
+ },
+ satnik(){
+  const W=[["slunce","☀️","Je teplo"],["dest","🌧️","Prší"],["snih","❄️","Mrzne"]][Math.random()*3|0];
+  const order=[["🩲","Spodní prádlo"],["👕","Tričko"],["👖","Kalhoty"],["🧦","Ponožky"]];
+  if(W[0]==="slunce")order.push(["🧢","Kšiltovka"]);if(W[0]==="dest")order.push(["🧥","Bunda"],["☂️","Deštník"]);if(W[0]==="snih")order.push(["🧥","Bunda"],["🧣","Šála"],["🧤","Rukavice"]);
+  const decoys=W[0]==="slunce"?[["🧤","Rukavice"],["🧣","Šála"]]:W[0]==="snih"?[["🩳","Kraťasy"],["🕶️","Sluneční brýle"]]:[["🕶️","Sluneční brýle"],["🩳","Kraťasy"]];
+  const all=shuffle(order.concat(decoys));let step=0;
+  openSheet(head("Obléct se")+`<div class="center"><div class="weather"><span>${W[1]}</span><b>${W[2]}</b></div><p class="lead">Obleč postavičku ve správném pořadí a podle počasí. Pak se obleč i ty.</p>
+   <div class="figure"><span class="kidfig">🧒</span><div class="worn" id="worn"></div></div>
+   <div class="foods">${all.map((x,i)=>`<button class="food big" data-i="${i}" aria-label="${x[1]}">${x[0]}</button>`).join("")}</div><div class="say" id="say"></div></div>`);
+  $("#panel").querySelectorAll("[data-i]").forEach(b=>b.onclick=()=>{const it=all[+b.dataset.i];
+    if(!order.some(o=>o[1]===it[1])){b.classList.remove("no");void b.offsetWidth;b.classList.add("no");blip(220,.2,"square",.06);$("#say").textContent=it[1]+"? To dnes potřebovat nebudeš.";return}
+    if(order[step][1]!==it[1]){b.classList.remove("no");void b.offsetWidth;b.classList.add("no");blip(260,.15,"square",.05);$("#say").textContent="Nejdřív: "+order[step][1];return}
+    b.classList.add("used");blip(700+step*60);$("#worn").insertAdjacentHTML("beforeend",`<span>${it[0]}</span>`);step++;
+    $("#say").textContent=step<order.length?"Dobře! Co dál?":"Hotovo, můžeš vyrazit!";if(step===order.length)setTimeout(()=>finishTask(curTask),900)});
+ },
+ konvicka(){
+  const plants=["🌷","🌻","🌼"];let i=0,level=0,holding=false,rid=0,last=0;
+  const ui=()=>`<div class="plantrow">${plants.map((p,k)=>`<span class="${k<i?"grown":k===i?"cur":""}">${k<i?p:"🌱"}</span>`).join("")}</div>`;
+  openSheet(head("Zalít květiny")+`<div class="center"><p class="lead">Drž tlačítko a zalévej. Pusť, když je voda v zeleném pásu. Moc vody květině škodí!</p>
+   <div id="pr">${ui()}</div><div class="gauge"><i class="zone"></i><b id="lv"></b></div>
+   <button class="hold small" id="pour"><span>Zalévat 🚿</span></button><div class="say" id="say"></div></div>`);
+  const paint=()=>{$("#lv").style.height=Math.min(100,level)+"%"};
+  const step=now=>{const dt=(now-last)/1000;last=now;if(holding){level+=dt*38;paint();if(level>100){holding=false;level=0;paint();blip(200,.3,"square",.06);$("#say").textContent="Moc vody! Zkus to znovu, pomaleji."}else rid=requestAnimationFrame(step)}};
+  const down=e=>{e.preventDefault();holding=true;last=performance.now();rid=requestAnimationFrame(step)};
+  const up=()=>{if(!holding)return;holding=false;cancelAnimationFrame(rid);
+    if(level>=55&&level<=82){blip(900);i++;level=0;paint();$("#pr").innerHTML=ui();$("#say").textContent=i<plants.length?"Vyrostla! Další kytka.":"Všechny kytky kvetou!";if(i>=plants.length)setTimeout(()=>finishTask(curTask),900)}
+    else if(level<55)$("#say").textContent="Ještě trochu přilej."};
+  const b=$("#pour");b.addEventListener("pointerdown",down);["pointerup","pointerleave","pointercancel"].forEach(ev=>b.addEventListener(ev,up));
+ },
+ miska(t){
+  const pet=["🐱","🐶","🐰","🐹","🐢","🐦"].includes(t&&t.icon)?t.icon:"🐱";const N=3;let sc=0,water=0,holding=false,rid=0,last=0,phase=1;
+  openSheet(head("Nakrmit zvíře")+`<div class="center"><span class="pet" id="pet">${pet}</span>
+   <p class="lead" id="ml">Nasyp přesně ${N} lžičky granulí.</p>
+   <div class="bowls"><div class="bowl"><div class="kib" id="kib"></div><small>Granule <b id="sc">0</b>/${N}</small></div><div class="bowl"><div class="wat"><b id="wl"></b><i class="line"></i></div><small>Voda</small></div></div>
+   <div class="tools"><button class="btn" id="scoop">Nasypat lžičku 🥄</button><button class="hold small" id="pourw" hidden><span>Napustit 💧</span></button></div><div class="say" id="say"></div></div>`);
+  $("#scoop").onclick=()=>{if(phase!==1)return;sc++;blip(600+sc*80);$("#sc").textContent=sc;$("#kib").textContent="🟤".repeat(Math.min(sc,6));
+    if(sc>N){$("#say").textContent="Moc! Zvíře by se přejedlo. Zkus to znovu.";sc=0;setTimeout(()=>{$("#sc").textContent=0;$("#kib").textContent=""},700);return}
+    if(sc===N){phase=2;$("#say").textContent="Akorát! Teď čerstvá voda.";$("#ml").textContent="Drž tlačítko, dokud voda nedosáhne čárky.";$("#scoop").hidden=true;$("#pourw").hidden=false}};
+  const step=now=>{const dt=(now-last)/1000;last=now;if(holding){water=Math.min(100,water+dt*40);$("#wl").style.height=water+"%";if(water>=100){holding=false;$("#say").textContent="Přeteklo! Vylijeme a znovu.";water=0;setTimeout(()=>$("#wl").style.height="0%",500)}else rid=requestAnimationFrame(step)}};
+  const b=$("#pourw");b.addEventListener("pointerdown",e=>{e.preventDefault();holding=true;last=performance.now();rid=requestAnimationFrame(step)});
+  ["pointerup","pointerleave","pointercancel"].forEach(ev=>b.addEventListener(ev,()=>{if(!holding)return;holding=false;cancelAnimationFrame(rid);
+    if(water>=70&&water<=90){chime();$("#pet").classList.add("happy");$("#say").textContent="Mňam! Děkuje ti.";setTimeout(()=>finishTask(curTask),1000)}else if(water<70)$("#say").textContent="Ještě trochu."}));
+ },
+ rozcvicka(){
+  const ex=[["Dřepy","🏋️","Ruce dopředu, zadek dozadu"],["Panák","🤸","Skoky s rukama nahoru"],["Letadlo","✈️","Ruce do stran, stoj na jedné noze"],["Běh na místě","🏃","Kolena vysoko"],["Protažení","🙆","Ruce ke stropu, pak k zemi"]];const SEC=15;let i=0,left=SEC,run=false;
+  openSheet(head("Rozcvička s rybkou")+`<div class="center"><div class="exdots">${ex.map((e,k)=>`<i data-k="${k}"></i>`).join("")}</div>
+   <span class="exic" id="exi">${ex[0][1]}</span><h3 id="exn">${ex[0][0]}</h3><p class="lead" id="exd">${ex[0][2]}</p><div class="timer" id="tm">${SEC}</div>
+   <button class="btn sea" id="go">Start</button></div>`);
+  const show=()=>{$("#exi").textContent=ex[i][1];$("#exn").textContent=ex[i][0];$("#exd").textContent=ex[i][2];$("#panel").querySelectorAll(".exdots i").forEach((d,k)=>d.className=k<i?"done":k===i?"on":"")};show();
+  $("#go").onclick=()=>{if(run)return;run=true;$("#go").disabled=true;blip(500);
+    gameTimer=setInterval(()=>{left--;$("#tm").textContent=left;if(left<=3&&left>0)blip(700,.06);
+      if(left<=0){i++;blip(1000,.2,"triangle");if(i>=ex.length){clearInterval(gameTimer);$("#exn").textContent="Hotovo, šampione!";$("#exi").textContent="🏆";$("#exd").textContent="";setTimeout(()=>finishTask(curTask),900);return}left=SEC;$("#tm").textContent=left;show()}},1000)};
+ },
+ matika(t){
+  const lvl=(t&&t.level)||"10";const gen=()=>{let a,b,op,res;
+    if(lvl==="nas"){a=1+Math.random()*10|0;b=1+Math.random()*10|0;op="×";res=a*b}
+    else{const max=lvl==="20"?20:10;if(Math.random()<.5){a=Math.random()*(max+1)|0;b=Math.random()*(max-a+1)|0;op="+";res=a+b}else{a=1+Math.random()*max|0;b=Math.random()*(a+1)|0;op="−";res=a-b}}
+    const opts=new Set([res]);while(opts.size<3){const d=res+(Math.random()<.5?-1:1)*(1+Math.random()*3|0);if(d>=0)opts.add(d)}return {a,b,op,res,opts:shuffle([...opts])}};
+  let n=0,q=gen();const TOTAL=5;
+  const render=()=>{$("#mq").innerHTML=`<div class="prob">${q.a} ${q.op} ${q.b} = ?</div>${lvl==="10"&&q.op==="+"?`<div class="count">${"🐟".repeat(q.a)} <b>+</b> ${"🐠".repeat(q.b)}</div>`:lvl==="10"?`<div class="count">${"🐟".repeat(q.a-q.b)}${"<s>🐟</s>".repeat(q.b)}</div>`:""}
+    <div class="answers">${q.opts.map(o=>`<button class="bubble" data-a="${o}">${o}</button>`).join("")}</div>`;
+    $("#mq").querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{if(+b.dataset.a===q.res){blip(900);n++;$("#ms").textContent=n+" / "+TOTAL;if(n>=TOTAL){$("#mq").innerHTML='<div class="prob">🎉 Výborně!</div>';chime();setTimeout(()=>finishTask(curTask),900);return}q=gen();render()}else{b.classList.remove("no");void b.offsetWidth;b.classList.add("no");blip(220,.2,"square",.06)}})};
+  openSheet(head("Mořská matika")+`<div class="center"><p class="lead">Rozehřej hlavu před úkoly do školy. Vyřeš ${TOTAL} příkladů.</p><div class="score" id="ms">0 / ${TOTAL}</div><div id="mq"></div><p class="hint">Pak udělej úkoly do školy doopravdy a ukaž je rodiči.</p></div>`);render();
+ },
+ muslicka(){
+  const deeds=["Pomohl/a jsem sourozenci","Půjčil/a jsem hračku","Někoho jsem pochválil/a","Pomohl/a jsem s vařením","Utěšil/a jsem kamaráda","Udělal/a jsem dárek nebo obrázek","Něco jiného hezkého"];
+  openSheet(head("Udělat někomu radost")+`<div class="center"><span class="shell" id="shell">🐚</span><p class="lead">Co hezkého jsi dnes udělal/a?</p>
+   <div class="deeds">${deeds.map((d,i)=>`<button class="btn ghost small" data-d="${i}">${d}</button>`).join("")}</div></div>`);
+  $("#panel").querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{const d=today();d.notes=d.notes||{};d.notes[curTask]=deeds[+b.dataset.d];
+    const s=$("#shell");s.textContent="🦪";s.classList.add("open");chime();$("#panel").querySelector(".deeds").innerHTML='<p class="lead">Mušle se otevřela a v ní perla. Svět je o kousek hezčí!</p>';setTimeout(()=>finishTask(curTask),1300)});
+ },
+ uspavani(){
+  let lamps=[1,1,1],curtain=0;
+  openSheet(head("Jít spát")+`<div class="center"><p class="lead">Zhasni světla a zatáhni závěsy. Rybky jdou taky spát.</p>
+   <div class="bedroom" id="room"><div class="curtain l" id="cl"></div><div class="curtain r" id="cr"></div><div class="moon">🌙</div>
+    <div class="lamps">${lamps.map((_,i)=>`<button class="lamp on" data-l="${i}" aria-label="Lampička ${i+1}">💡</button>`).join("")}</div><span class="sleepfish" id="sf">🐠</span></div>
+   <input type="range" class="slider" id="cur" min="0" max="100" value="0" aria-label="Zatáhnout závěsy"><div class="say" id="say"></div></div>`);
+  let check=()=>{const dark=lamps.filter(x=>!x).length/3;$("#room").style.setProperty("--dark",dark*.6+curtain/100*.3);if(!lamps.some(Boolean)&&curtain>=95){$("#sf").textContent="💤";$("#say").textContent="Dobrou noc! Rybky už spí.";chime();setTimeout(()=>finishTask(curTask),1200);check=()=>{}}};
+  $("#panel").querySelectorAll("[data-l]").forEach(b=>b.onclick=()=>{const i=+b.dataset.l;if(!lamps[i])return;lamps[i]=0;b.classList.remove("on");blip(300,.12,"triangle");check()});
+  $("#cur").oninput=e=>{curtain=+e.target.value;$("#cl").style.width=$("#cr").style.width=(curtain/2)+"%";check()};
+ },
+ plavba(t){
+  const mins=(t&&t.minutes)||10;const total=mins*60;let elapsed=0,startAt=null,run=false;
+  openSheet(head(esc((t&&t.name)||"Plavba"))+`<div class="center"><p class="lead">${esc((t&&t.desc)||"")} Lodička pluje ${mins} minut, dokud se věnuješ úkolu.</p>
+   <div class="voyage"><div class="waves"></div><span class="boat" id="boat">⛵</span><span class="island">🏝️</span><span class="chest" id="chest">🧰</span></div>
+   <div class="timer" id="tm">${mins}:00</div>
+   <div class="tools"><button class="btn sea" id="go">Vyplout</button>${CFG.testTools?'<button class="btn ghost small" id="fast">Test 10 s</button>':""}</div><div class="say" id="say"></div></div>`);
+  let lock=null;const tick=()=>{const now=Date.now();const el=elapsed+(run?(now-startAt)/1000:0);const p=Math.min(1,el/total);$("#boat").style.left=(4+p*74)+"%";const rest=Math.max(0,Math.ceil(total-el));$("#tm").textContent=Math.floor(rest/60)+":"+String(rest%60).padStart(2,"0");
+    if(p>=1){clearInterval(gameTimer);run=false;$("#chest").textContent="🎁";$("#chest").classList.add("open");$("#say").textContent="Doplul/a jsi k pokladu!";chime();try{lock&&lock.release()}catch(e){}setTimeout(()=>finishTask(curTask),1100)}};
+  const start=()=>{run=!run;if(run){startAt=Date.now();$("#go").textContent="Pauza";blip(500);try{navigator.wakeLock&&navigator.wakeLock.request("screen").then(l=>lock=l).catch(()=>{})}catch(e){}clearInterval(gameTimer);gameTimer=setInterval(tick,500)}else{elapsed+=(Date.now()-startAt)/1000;$("#go").textContent="Pokračovat";clearInterval(gameTimer);tick()}};
+  $("#go").onclick=start;if($("#fast"))$("#fast").onclick=()=>{elapsed=Math.max(elapsed,total-10);if(!run)start()};
+ },
+ rutina(t){
+  const steps=(t&&t.steps&&t.steps.length)?t.steps:["Krok 1","Krok 2","Krok 3"];const done=new Set();
+  openSheet(head(esc((t&&t.name)||"Rutina"))+`<div class="center"><p class="lead">Odškrtni každý krok, až ho uděláš.</p>
+   <div class="steplist">${steps.map((s,i)=>`<button class="stp" data-s="${i}"><i></i><span>${esc(s)}</span></button>`).join("")}</div><div class="say" id="say"></div></div>`);
+  $("#panel").querySelectorAll("[data-s]").forEach(b=>b.onclick=()=>{const i=+b.dataset.s;if(done.has(i))return;done.add(i);b.classList.add("ok");blip(600+done.size*70);
+    $("#say").textContent=done.size<steps.length?"Ještě "+(steps.length-done.size):"Všechno hotovo!";if(done.size===steps.length)setTimeout(()=>finishTask(curTask),800)});
+ }
+});
 
 /* boot */
 makePortraits();

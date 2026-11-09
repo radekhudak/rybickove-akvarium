@@ -19,6 +19,13 @@ supabase/schema.sql    databáze
 
 Bez vyplněného `config.js` hra běží v režimu „bez účtu“. Postup se pak ukládá jen v daném prohlížeči, což se hodí na lokální zkoušení.
 
+## Co hra umí
+
+- **Na začátku** si dítě vybere tvar akvária (klasické, panorama, kulaté, vysoký sloup), pozadí (Korálový útes, Říční džungle, Potopené město, Hlubina) a první rybku v otočném 3D náhledu. Změnit jde kdykoli tlačítkem „Upravit akvárium“.
+- **Rybky za body:** první rybka se vylíhne po prvním potvrzeném úkolu. Každá další po nasbírání bodů, jejichž počet nastaví rodič v rodičovském režimu (výchozí 15). Body = odměna potvrzeného úkolu, +2 za splnění všech dnešních úkolů.
+- **Nabídka úkolů** v administraci (21 úkolů) a vlastní úkoly s volitelnou mini-hrou.
+- **19 mini-her:** Bacilí honička, Úklid do krabic, Zdravý talíř, Ustlaná postel, Plavba lodičky (časovač), Krok za krokem (rutina), Třídění odpadu, Aktovka, Prostírání, Mýdlová pěna, Šatník, Konvička, Miska, Lednička, Myčka, Rozcvička, Mořská matika, Srdíčková mušle, Uspávání.
+
 ---
 
 ## 1. Supabase (cca 10 minut)
