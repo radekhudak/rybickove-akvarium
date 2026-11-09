@@ -358,15 +358,30 @@ function startTank3D(wrap,opts){
 }
 
 /* ============ UI HELPERS ============ */
+/* ============ VOICE (průvodce) ============ */
+const HAS_TTS="speechSynthesis" in window&&"SpeechSynthesisUtterance" in window;
+let CZ_VOICE=null;
+function pickVoice(){if(!HAS_TTS)return;const vs=speechSynthesis.getVoices();CZ_VOICE=vs.find(v=>/^cs/i.test(v.lang)&&/google/i.test(v.name))||vs.find(v=>/^cs/i.test(v.lang)&&!v.localService)||vs.find(v=>/^cs/i.test(v.lang))||null}
+if(HAS_TTS){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
+function voiceCfg(){return Object.assign({on:true,rate:.95},(typeof S!=="undefined"&&S&&S.voice)||{})}
+function speechText(t){return String(t||"").replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu,"").replace(/\s*=\s*\?/g," je kolik?").replace(/\s\+\s/g," plus ").replace(/\s[−-]\s/g," mínus ").replace(/\s×\s/g," krát ").replace(/\//g," lomeno ").replace(/\s+/g," ").trim()}
+function speak(text,interrupt=true){const c=voiceCfg();if(!HAS_TTS||!c.on)return;const t=speechText(text);if(!t)return;try{if(interrupt)speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="cs-CZ";if(CZ_VOICE)u.voice=CZ_VOICE;u.rate=c.rate;u.pitch=1.12;speechSynthesis.speak(u)}catch(e){}}
+function stopSpeak(){try{HAS_TTS&&speechSynthesis.cancel()}catch(e){}}
+const QUIET_SHEET=/Rodičovský|^Úkoly:|Nový úkol|Upravit úkol|Nabídka úkolů|Nový profil|Zopakuj PIN/;
+function narrateSheet(){const p=$("#panel");const h=p.querySelector(".panel-head h2");const title=h?h.textContent:"";if(QUIET_SHEET.test(title))return;
+  const lead=[...p.querySelectorAll(".lead")].filter(x=>x.offsetParent!==null).map(x=>x.textContent).join(" ");speak(title&&lead?title+(/[.!?]$/.test(title)?" ":". ")+lead:title||lead)}
+let lastSaid="";
+const sayObserver=new MutationObserver(ms=>{const h=$("#panel .panel-head h2");if(h&&QUIET_SHEET.test(h.textContent))return;for(const m of ms){const el=m.target.nodeType===3?m.target.parentElement:m.target;const say=el&&el.closest&&el.closest(".say");if(say&&say.textContent&&say.textContent!==lastSaid){lastSaid=say.textContent;speak(say.textContent);break}}});
+
 const $=s=>document.querySelector(s);
 const app=$("#app");
 function esc(s){return String(s).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]))}
-let toastT;function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,2200)}
+let toastT;function toast(m){const t=$("#toast");t.textContent=m;if(screenName==="main"||screenName==="profiles")speak(m);t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,2200)}
 let sheetClose=null,pendingRefresh=false;
-function openSheet(html,onClose){const p=$("#panel");p.innerHTML=html;$("#sheet").hidden=false;sheetClose=onClose||null;p.querySelectorAll("[data-close]").forEach(b=>b.onclick=closeSheet)}
-function closeSheet(){disposeViewers();$("#sheet").hidden=true;$("#panel").innerHTML="";clearInterval(gameTimer);const f=sheetClose;sheetClose=null;if(f)f();if(pendingRefresh){pendingRefresh=false;refreshScreen()}}
+function openSheet(html,onClose){stopSpeak();lastSaid="";const p=$("#panel");p.innerHTML=html;$("#sheet").hidden=false;sheetClose=onClose||null;p.querySelectorAll("[data-close]").forEach(b=>b.onclick=closeSheet);const rp=p.querySelector("[data-replay]");if(rp)rp.onclick=()=>narrateSheet();sayObserver.disconnect();sayObserver.observe(p,{subtree:true,childList:true,characterData:true});setTimeout(narrateSheet,120)}
+function closeSheet(){disposeViewers();stopSpeak();sayObserver.disconnect();$("#sheet").hidden=true;$("#panel").innerHTML="";clearInterval(gameTimer);const f=sheetClose;sheetClose=null;if(f)f();if(pendingRefresh){pendingRefresh=false;refreshScreen()}}
 $("#sheet").addEventListener("click",e=>{if(e.target.id==="sheet")closeSheet()});
-function head(t){return `<div class="panel-head"><h2>${t}</h2><button class="close" data-close aria-label="Zavřít">✕</button></div>`}
+function head(t){return `<div class="panel-head"><h2>${t}</h2>${QUIET_SHEET.test(t)?"":`<button class="replay" data-replay aria-label="Přečíst znovu">🔊</button>`}<button class="close" data-close aria-label="Zavřít">✕</button></div>`}
 function fishHTML(sp,cls=""){return PORTRAIT[sp]?`<img class="fimg ${cls}" src="${PORTRAIT[sp]}" alt="${esc(SPECIES[sp].name)}">`:`<canvas class="fimg ${cls}" data-sp="${sp}"></canvas>`}
 function hydrate(root){root.querySelectorAll("canvas.fimg[data-sp]").forEach(cv=>fishIcon(cv,+cv.dataset.sp))}
 function confetti(){const cv=$("#confetti"),c=cv.getContext("2d");cv.width=innerWidth;cv.height=innerHeight;const ps=[...Array(90)].map(()=>({x:innerWidth/2,y:innerHeight*.45,vx:(Math.random()-.5)*14,vy:-Math.random()*14-4,r:Math.random()*6+4,c:["#ff7a59","#ffc93c","#3fb68b","#3aa5ff","#ff7ac8"][Math.random()*5|0],a:Math.random()*6}));let f=0;(function step(){c.clearRect(0,0,cv.width,cv.height);ps.forEach(p=>{p.vy+=.4;p.x+=p.vx;p.y+=p.vy;p.a+=.2;c.save();c.translate(p.x,p.y);c.rotate(p.a);c.fillStyle=p.c;c.fillRect(-p.r/2,-p.r/4,p.r,p.r/2);c.restore()});if(++f<110)requestAnimationFrame(step);else c.clearRect(0,0,cv.width,cv.height)})()}
@@ -542,6 +557,7 @@ function renderMain(){
   $("#parent").onclick=()=>parentGate(parentPanel);
   $("#tB").onclick=()=>{tab="board";showTab()};$("#tT").onclick=()=>{tab="tank";showTab()};
   showTab();
+  {const n=todaysTasks().length,dn=todaysTasks().filter(t=>today().tasks[t.id]==="confirmed").length;speak("Ahoj "+kid.name+"! "+(n?(dn>=n?"Dnes máš všechno hotové. Paráda!":"Dnes máš "+(n-dn)+" "+plural(n-dn,"úkol","úkoly","úkolů")+". Vyber si, čím začneš."):"Dnes máš volno."))}
   if(!kid.tank)setTimeout(()=>setupTank(true),300);
   else if(kid.eggs>0)setTimeout(hatch,300);
 }
@@ -667,6 +683,10 @@ function parentPanel(){
    <div class="fishset"><b>Nová rybka každých</b><div class="stepper"><button id="fm" aria-label="Méně">−</button><span><b id="fv">${kid.fishEvery||15}</b> bodů</span><button id="fp" aria-label="Více">+</button></div>
     <small>Body dítě dostává za potvrzené úkoly (podle odměny úkolu) a +${GOLD_BONUS} za splnění všech dnešních. Teď má ${kid.fishPts||0} z ${kid.fishEvery||15}.</small></div>
    ${accountHTML()}
+   <div class="fishset"><b>Hlas průvodce</b><label class="check"><input type="checkbox" id="von" ${voiceCfg().on?"checked":""}><span>Předčítat dětem pokyny</span></label>
+    <div class="stepper"><button id="vs" aria-label="Pomaleji">🐢</button><span><b id="vr">${Math.round(voiceCfg().rate*100)}</b> %</span><button id="vf" aria-label="Rychleji">🐇</button></div>
+    <button class="btn ghost small" id="vtest">Vyzkoušet hlas</button>
+    <small>${!HAS_TTS?"Tento prohlížeč neumí předčítat.":CZ_VOICE?"Hlas: "+esc(CZ_VOICE.name):"Na zařízení chybí český hlas. Android: Nastavení → Usnadnění → Převod textu na řeč → Google → stáhnout češtinu."}</small></div>
    <h3 class="section-t" style="margin-bottom:0">Nástroje</h3>
    <div class="tools">${CFG.testTools?'<button class="btn ghost small" id="nextDay">Test: další den</button>':""}<button class="btn ghost small" id="gift">Odměna navíc +10 perliček</button>${cloud.user?'<button class="btn ghost small" id="logout">Odhlásit rodinu z tohoto zařízení</button>':""}<button class="btn ghost small" id="delKid">Smazat profil ${esc(kid.name)}</button></div>
    <p class="hint" id="rhint"></p></div>`,()=>{if(kid){refreshChips();if(kid.eggs>0){tab="board";showTab();setTimeout(hatch,200)}else showTab()}});
@@ -679,6 +699,11 @@ function parentPanel(){
   $("#fm").onclick=()=>setEvery((kid.fishEvery||15)-5);$("#fp").onclick=()=>setEvery((kid.fishEvery||15)+5);
   if($("#logout"))$("#logout").onclick=()=>{sheetClose=null;closeSheet();logout()};
   if($("#nextDay"))$("#nextDay").onclick=()=>{S.offset=(S.offset||0)+1;save();toast("Nový den, nová tabule");closeSheet()};
+  const setV=o=>{S.voice=Object.assign(voiceCfg(),o);save()};
+  $("#von").onchange=e=>setV({on:e.target.checked});
+  $("#vs").onclick=()=>{const r=Math.max(.6,Math.round((voiceCfg().rate-.05)*100)/100);setV({rate:r});$("#vr").textContent=Math.round(r*100)};
+  $("#vf").onclick=()=>{const r=Math.min(1.4,Math.round((voiceCfg().rate+.05)*100)/100);setV({rate:r});$("#vr").textContent=Math.round(r*100)};
+  $("#vtest").onclick=()=>{const c=S.voice&&S.voice.on===false;if(c){toast("Hlas je vypnutý");return}speak("Ahoj! Já jsem tvoje rybka průvodkyně. Pojďme splnit dnešní úkoly!")};
   $("#gift").onclick=()=>{kid.pearls+=10;save();refreshChips();toast("+10 perliček")};
   let armed=false;$("#delKid").onclick=()=>{if(!armed){armed=true;$("#rhint").textContent="Ťukni znovu. Smaže se profil, rybky i perličky a nejde to vrátit.";return}
     S.kids=S.kids.filter(k=>k.id!==kid.id);save();sheetClose=null;closeSheet();renderProfiles();toast("Profil smazán")};
@@ -1174,7 +1199,7 @@ Object.assign(GAMES,{
   openSheet(head("Rozcvička s rybkou")+`<div class="center"><div class="exdots">${ex.map((e,k)=>`<i data-k="${k}"></i>`).join("")}</div>
    <span class="exic" id="exi">${ex[0][1]}</span><h3 id="exn">${ex[0][0]}</h3><p class="lead" id="exd">${ex[0][2]}</p><div class="timer" id="tm">${SEC}</div>
    <button class="btn sea" id="go">Start</button></div>`);
-  const show=()=>{$("#exi").textContent=ex[i][1];$("#exn").textContent=ex[i][0];$("#exd").textContent=ex[i][2];$("#panel").querySelectorAll(".exdots i").forEach((d,k)=>d.className=k<i?"done":k===i?"on":"")};show();
+  const show=()=>{if(run)speak(ex[i][0]+". "+ex[i][2]);$("#exi").textContent=ex[i][1];$("#exn").textContent=ex[i][0];$("#exd").textContent=ex[i][2];$("#panel").querySelectorAll(".exdots i").forEach((d,k)=>d.className=k<i?"done":k===i?"on":"")};show();
   $("#go").onclick=()=>{if(run)return;run=true;$("#go").disabled=true;blip(500);
     gameTimer=setInterval(()=>{left--;$("#tm").textContent=left;if(left<=3&&left>0)blip(700,.06);
       if(left<=0){i++;blip(1000,.2,"triangle");if(i>=ex.length){clearInterval(gameTimer);$("#exn").textContent="Hotovo, šampione!";$("#exi").textContent="🏆";$("#exd").textContent="";setTimeout(()=>finishTask(curTask),900);return}left=SEC;$("#tm").textContent=left;show()}},1000)};
@@ -1185,7 +1210,7 @@ Object.assign(GAMES,{
     else{const max=lvl==="20"?20:10;if(Math.random()<.5){a=Math.random()*(max+1)|0;b=Math.random()*(max-a+1)|0;op="+";res=a+b}else{a=1+Math.random()*max|0;b=Math.random()*(a+1)|0;op="−";res=a-b}}
     const opts=new Set([res]);while(opts.size<3){const d=res+(Math.random()<.5?-1:1)*(1+Math.random()*3|0);if(d>=0)opts.add(d)}return {a,b,op,res,opts:shuffle([...opts])}};
   let n=0,q=gen();const TOTAL=5;
-  const render=()=>{$("#mq").innerHTML=`<div class="prob">${q.a} ${q.op} ${q.b} = ?</div>${lvl==="10"&&q.op==="+"?`<div class="count">${"🐟".repeat(q.a)} <b>+</b> ${"🐠".repeat(q.b)}</div>`:lvl==="10"?`<div class="count">${"🐟".repeat(q.a-q.b)}${"<s>🐟</s>".repeat(q.b)}</div>`:""}
+  const render=()=>{setTimeout(()=>speak(q.a+" "+q.op+" "+q.b+" = ?"),n?300:2600);$("#mq").innerHTML=`<div class="prob">${q.a} ${q.op} ${q.b} = ?</div>${lvl==="10"&&q.op==="+"?`<div class="count">${"🐟".repeat(q.a)} <b>+</b> ${"🐠".repeat(q.b)}</div>`:lvl==="10"?`<div class="count">${"🐟".repeat(q.a-q.b)}${"<s>🐟</s>".repeat(q.b)}</div>`:""}
     <div class="answers">${q.opts.map(o=>`<button class="bubble" data-a="${o}">${o}</button>`).join("")}</div>`;
     $("#mq").querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{if(+b.dataset.a===q.res){blip(900);n++;$("#ms").textContent=n+" / "+TOTAL;if(n>=TOTAL){$("#mq").innerHTML='<div class="prob">🎉 Výborně!</div>';chime();setTimeout(()=>finishTask(curTask),900);return}q=gen();render()}else{b.classList.remove("no");void b.offsetWidth;b.classList.add("no");blip(220,.2,"square",.06)}})};
   openSheet(head("Mořská matika")+`<div class="center"><p class="lead">Rozehřej hlavu před úkoly do školy. Vyřeš ${TOTAL} příkladů.</p><div class="score" id="ms">0 / ${TOTAL}</div><div id="mq"></div><p class="hint">Pak udělej úkoly do školy doopravdy a ukaž je rodiči.</p></div>`);render();
