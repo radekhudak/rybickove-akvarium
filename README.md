@@ -1,5 +1,8 @@
 # Rybičkové akvárium: samostatná webová verze
 
+**Běží na:** https://radekhudak.github.io/rybickove-akvarium/  
+**Supabase projekt:** Rybycky (`nlkdgebvmbiliiivxjud`), tabulka `families`, Site URL a Redirect URL nastavené.
+
 Statický web bez buildu: HTML, JS, knihovny a fonty jsou přímo ve složce. Přihlášení a ukládání postupu obstarává Supabase (bezplatný tarif stačí). Na tabletu se hra nainstaluje jako aplikace na celou obrazovku.
 
 ```
