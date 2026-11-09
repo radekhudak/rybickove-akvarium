@@ -25,7 +25,8 @@ const DECOR=[
 const ALL_DAYS=[0,1,2,3,4,5,6];
 const DAYS=[[1,"Po"],[2,"Út"],[3,"St"],[4,"Čt"],[5,"Pá"],[6,"So"],[0,"Ne"]];
 const ICONS=["⭐","🐱","🐶","🌱","📚","🎻","🧹","🧺","🍽️","🗑️","🚿","🦷","🎒","✏️","🧩","🏃","🚲","💤","👟","🧃","🎨","🤸","💌","🪴"];
-const MAX_PER_DAY=6;
+const DEFAULT_DAILY_MAX=6;
+function dailyMax(k=kid){return Math.max(1,Math.min(12,(k&&k.dailyMax)||DEFAULT_DAILY_MAX))}
 const MINIGAMES=[
  {id:"zuby",name:"Bacilí honička",icon:"🪥",desc:"2min časovač, bacily po čtvrtinách pusy"},
  {id:"pokoj",name:"Úklid do krabic",icon:"🧸",desc:"Hračky, oblečení, knížky do krabic"},
@@ -48,10 +49,23 @@ const MINIGAMES=[
  {id:"uspavani",name:"Uspávání",icon:"🌙",desc:"Zhasnout lampy, zatáhnout závěsy"}
 ];
 function kidTasks(k=kid){if(!k.tasks)k.tasks=TASKS.map(t=>({id:t.id,name:t.name,desc:t.desc,icon:t.icon,bg:t.bg,reward:t.reward,builtin:true,cat:t.id,game:t.id,on:true,days:ALL_DAYS.slice()}));
-  k.tasks.forEach(t=>{if(t.game===undefined)t.game=t.builtin?t.id:null});return k.tasks}
+  k.tasks.forEach(t=>{if(t.game===undefined)t.game=t.builtin?t.id:null;if(!t.tier)t.tier=t.builtin?"zaklad":"bonus"});return k.tasks}
+function dateOf(off=0){const t=new Date();t.setDate(t.getDate()+off+(S.offset||0));return t}
+function keyOf(dt){return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0")}
+function dayPlan(off=0,k=kid){
+  const dt=dateOf(off),key=keyOf(dt),w=dt.getDay(),max=dailyMax(k);const all=kidTasks(k);const plan=k.plans&&k.plans[key];
+  let base=[],extra=[];
+  if(plan){const byId=id=>all.find(t=>t.id===id);const list=(plan.tasks||[]).map(byId).filter(Boolean);const bset=new Set(plan.base||[]);base=list.filter(t=>bset.has(t.id));extra=list.filter(t=>!bset.has(t.id))}
+  else{const sched=all.filter(t=>t.on&&t.days.includes(w));base=sched.filter(t=>t.tier!=="bonus");extra=sched.filter(t=>t.tier==="bonus")}
+  base=base.slice(0,max);extra=extra.slice(0,Math.max(0,max-base.length));
+  return {key,date:dt,custom:!!plan,base,extra,all:base.concat(extra),max}}
+function todaysTasks(){return dayPlan(0).all}
+function coreTasks(){const p=dayPlan(0);return p.base.length?p.base:p.all}
+function isDone(st){return st==="pending"||st==="confirmed"}
+function extrasUnlocked(){const d=today();const p=dayPlan(0);return p.base.every(t=>isDone(d.tasks[t.id]))}
+function prunePlans(k=kid){if(!k||!k.plans)return;const cut=keyOf(dateOf(-1));Object.keys(k.plans).forEach(key=>{if(key<cut)delete k.plans[key]})}
 let curTask=null;
 function weekday(){const t=new Date();t.setDate(t.getDate()+(S.offset||0));return t.getDay()}
-function todaysTasks(){const w=weekday();return kidTasks().filter(t=>t.on&&t.days.includes(w)).slice(0,MAX_PER_DAY)}
 function findTask(id){return kidTasks().find(t=>t.id===id)||TASKS.find(t=>t.id===id)||{id,name:"Úkol",icon:"⭐",reward:1}}
 function daysLabel(d){if(d.length===7)return "každý den";const s=d.slice().sort();if(s.join()==="1,2,3,4,5")return "Po–Pá";if(s.join()==="0,6")return "víkend";return DAYS.filter(([n])=>d.includes(n)).map(x=>x[1]).join(" ")}
 function plural(n,a,b,c){return n===1?a:n>=2&&n<=4?b:c}
@@ -367,7 +381,7 @@ function voiceCfg(){return Object.assign({on:true,rate:.95},(typeof S!=="undefin
 function speechText(t){return String(t||"").replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu,"").replace(/\s*=\s*\?/g," je kolik?").replace(/\s\+\s/g," plus ").replace(/\s[−-]\s/g," mínus ").replace(/\s×\s/g," krát ").replace(/\//g," lomeno ").replace(/\s+/g," ").trim()}
 function speak(text,interrupt=true){const c=voiceCfg();if(!HAS_TTS||!c.on)return;const t=speechText(text);if(!t)return;try{if(interrupt)speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="cs-CZ";if(CZ_VOICE)u.voice=CZ_VOICE;u.rate=c.rate;u.pitch=1.12;speechSynthesis.speak(u)}catch(e){}}
 function stopSpeak(){try{HAS_TTS&&speechSynthesis.cancel()}catch(e){}}
-const QUIET_SHEET=/Rodičovský|^Úkoly:|Nový úkol|Upravit úkol|Nabídka úkolů|Nový profil|Zopakuj PIN/;
+const QUIET_SHEET=/Rodičovský|^Úkoly:|Nový úkol|Upravit úkol|Nabídka úkolů|Nový profil|Zopakuj PIN|Plán dne/;
 function narrateSheet(){const p=$("#panel");const h=p.querySelector(".panel-head h2");const title=h?h.textContent:"";if(QUIET_SHEET.test(title))return;
   const lead=[...p.querySelectorAll(".lead")].filter(x=>x.offsetParent!==null).map(x=>x.textContent).join(" ");speak(title&&lead?title+(/[.!?]$/.test(title)?" ":". ")+lead:title||lead)}
 let lastSaid="";
@@ -407,7 +421,7 @@ function readLocal(key){try{const r=localStorage.getItem(key);if(r){const o=JSON
 function writeLocal(){try{localStorage.setItem(localKey(),JSON.stringify(S))}catch(e){}}
 function localKey(){return cloud.user?LKEY+":"+cloud.user.id:LKEY}
 function hasData(o){return !!(o&&(o.parentPin||(o.kids&&o.kids.length)))}
-const APP_VERSION="2026-11-09g";
+const APP_VERSION="2026-11-09h";
 const cloud={mode:SB?"pending":"local",user:null,loaded:false,status:SB?"Přihlašuji…":"Bez účtu: postup se ukládá jen v tomto zařízení",lastJSON:null,channel:null,starting:false,clientId:Math.random().toString(36).slice(2)+Date.now().toString(36)};
 function sortKeys(o){if(Array.isArray(o))return o.map(sortKeys);if(o&&typeof o==="object"){const r={};Object.keys(o).sort().forEach(k=>{if(k!=="by")r[k]=sortKeys(o[k])});return r}return o}
 function stableJSON(o){return JSON.stringify(sortKeys(o))}
@@ -582,7 +596,8 @@ function renderMain(){
   $("#parent").onclick=()=>parentGate(parentPanel);
   $("#tB").onclick=()=>{tab="board";showTab()};$("#tT").onclick=()=>{tab="tank";showTab()};
   showTab();
-  {const n=todaysTasks().length,dn=todaysTasks().filter(t=>today().tasks[t.id]==="confirmed").length;speak("Ahoj "+kid.name+"! "+(n?(dn>=n?"Dnes máš všechno hotové. Paráda!":"Dnes máš "+(n-dn)+" "+plural(n-dn,"úkol","úkoly","úkolů")+". Vyber si, čím začneš."):"Dnes máš volno."))}
+  prunePlans(kid);
+  {const n=todaysTasks().length,dn=todaysTasks().filter(t=>isDone(today().tasks[t.id])).length;speak("Ahoj "+kid.name+"! "+(n?(dn>=n?"Dnes máš všechno hotové. Paráda!":"Dnes máš "+(n-dn)+" "+plural(n-dn,"úkol","úkoly","úkolů")+". Vyber si, čím začneš."):"Dnes máš volno."))}
   if(!kid.tank)setTimeout(()=>setupTank(true),300);
   else if(kid.eggs>0)setTimeout(hatch,300);
 }
@@ -593,23 +608,28 @@ function showTab(){
   if(tab==="board"){stopTank();renderBoard()}else renderTank();
 }
 function renderBoard(){
-  const d=today();const list=todaysTasks();const done=list.filter(t=>d.tasks[t.id]==="confirmed").length;const pend=list.filter(t=>d.tasks[t.id]==="pending").length;
-  const dt=new Date();dt.setDate(dt.getDate()+(S.offset||0));
-  const dn=dt.toLocaleDateString("cs-CZ",{weekday:"long",day:"numeric",month:"long"});
-  const first=!kid.fish.length;
+  const d=today();const P=dayPlan(0);const list=P.all;const done=list.filter(t=>d.tasks[t.id]==="confirmed").length;const pend=list.filter(t=>d.tasks[t.id]==="pending").length;
+  const dn=P.date.toLocaleDateString("cs-CZ",{weekday:"long",day:"numeric",month:"long"});
+  const unlocked=extrasUnlocked();const finished=list.length&&list.every(t=>isDone(d.tasks[t.id]));
+  const card=(t,locked)=>{const st=d.tasks[t.id];return `<button class="task ${st||""} ${locked?"locked":""}" data-t="${t.id}" ${locked?'aria-disabled="true"':""}>
+     ${locked?'<span class="badge lock">🔒 Až po základních</span>':st==="pending"?'<span class="badge pending">Čeká na rodiče</span>':st==="confirmed"?'<span class="badge confirmed">Hotovo ✓</span>':""}
+     <span class="ic" style="background:${t.bg||"#fff3d6"}">${t.icon}</span><h3>${esc(t.name)}</h3><p>${esc(t.desc||"")}</p>
+     <span class="rw"><span class="pearl"></span> +${t.reward}</span></button>`};
   $("#vBoard").innerHTML=`<div class="daybar"><div><h2>Tabule dne</h2><p>${dn}</p></div><p>${list.length?done+" z "+list.length+" potvrzeno":"Dnes žádné úkoly"}${pend?` · ${pend} čeká na rodiče`:""}</p></div>
    <div class="progress"><b id="prog"></b></div>
    ${list.length?"":'<div class="golden"><div><h3>Dnes máš volno</h3><p>Rodič na dnešek nenastavil žádné úkoly. Rybky se na tebe těší i tak.</p></div></div>'}
-   <div class="board">${list.map(t=>{const st=d.tasks[t.id];return `<button class="task ${st||""}" data-t="${t.id}">
-     ${st==="pending"?'<span class="badge pending">Čeká na rodiče</span>':st==="confirmed"?'<span class="badge confirmed">Hotovo ✓</span>':""}
-     <span class="ic" style="background:${t.bg||"#fff3d6"}">${t.icon}</span><h3>${esc(t.name)}</h3><p>${esc(t.desc||"")}</p>
-     <span class="rw"><span class="pearl"></span> +${t.reward}</span></button>`}).join("")}</div>
+   ${P.extra.length?'<h3 class="section-t small">Základní úkoly</h3>':""}
+   <div class="board">${P.base.map(t=>card(t,false)).join("")}</div>
+   ${P.extra.length?`<h3 class="section-t small">Další úkoly <small>${unlocked?"odemčeno":"odemknou se po splnění základních"}</small></h3><div class="board">${P.extra.map(t=>card(t,!unlocked)).join("")}</div>`:""}
+   ${finished?`<div class="golden ready"><div><h3>Všechno hotovo!</h3><p>Dnes máš splněno ${list.length} ${plural(list.length,"úkol","úkoly","úkolů")}, víc jich dnes není. Zbytek zase zítra.</p></div></div>`:""}
    ${fishProgressHTML()}`;
   requestAnimationFrame(()=>{const p=$("#prog");if(p)p.style.width=(list.length?done/list.length*100:0)+"%"});
   if($("#hatchBtn"))$("#hatchBtn").onclick=()=>{blip(600);hatch()};
   $("#vBoard").querySelectorAll(".task").forEach(b=>b.onclick=()=>{const id=b.dataset.t,st=today().tasks[id];
+    if(b.classList.contains("locked")){toast("Nejdřív splň základní úkoly");return}
     if(st==="confirmed"){toast("Tohle už máš dnes hotové");return}
     if(st==="pending"){toast("Ukaž to rodiči, ať ti to potvrdí");return}
+    const doneN=todaysTasks().filter(t=>isDone(today().tasks[t.id])).length;if(doneN>=dailyMax()){toast("Dnes už máš splněno maximum úkolů. Zbytek zítra!");return}
     blip(500);const t=findTask(id);curTask=t.id;if(t.game&&GAMES[t.game])GAMES[t.game](t);else GAMES.custom(t)});
 }
 function finishTask(id){today().tasks[id]="pending";save();chime();
@@ -705,9 +725,11 @@ function parentPanel(){
    <p class="lead">${esc(kid.name)}: ${pend.length?"tyhle úkoly čekají na potvrzení. Potvrď jen to, co dítě opravdu udělalo.":"nic nečeká na potvrzení."}</p>
    <div class="plist">${pend.map(t=>`<div class="prow"><span class="ic">${t.icon}</span><span class="t">${esc(t.name)}<small>+${t.reward} ${plural(t.reward,"bod","body","bodů")}${d.notes&&d.notes[t.id]?" · „"+esc(d.notes[t.id])+"“":""}</small></span><button class="btn kelp small" data-ok="${t.id}">Potvrdit</button><button class="btn ghost small" data-no="${t.id}">Vrátit</button></div>`).join("")}</div>
    ${pend.length>1?'<button class="btn kelp" id="all">Potvrdit vše</button>':""}
-   <button class="btn sea" id="editT">Upravit úkoly pro ${esc(kid.name)}</button>
+   <div class="tools"><button class="btn sea" id="editT">Upravit úkoly</button><button class="btn kelp" id="planT">Naplánovat zítřek</button></div>
+   <div class="fishset"><b>Úkolů denně nejvýš</b><div class="stepper"><button id="dm" aria-label="Méně">−</button><span><b id="dv">${dailyMax()}</b></span><button id="dp" aria-label="Více">+</button></div>
+    <small>Nejdřív se ukážou základní úkoly. Další se odemknou, až dítě splní všechny základní. Dohromady nejvýš tento počet za den.</small></div>
    <div class="fishset"><b>Nová rybka každých</b><div class="stepper"><button id="fm" aria-label="Méně">−</button><span><b id="fv">${kid.fishEvery||15}</b> bodů</span><button id="fp" aria-label="Více">+</button></div>
-    <small>Body dítě dostává za potvrzené úkoly (podle odměny úkolu) a +${GOLD_BONUS} za splnění všech dnešních. Teď má ${kid.fishPts||0} z ${kid.fishEvery||15}.</small></div>
+    <small>Body dítě dostává za potvrzené úkoly (podle odměny úkolu) a +${GOLD_BONUS} za všechny základní úkoly za den. Teď má ${kid.fishPts||0} z ${kid.fishEvery||15}.</small></div>
    ${accountHTML()}
    <div class="fishset"><b>Hlas průvodce</b><label class="check"><input type="checkbox" id="von" ${voiceCfg().on?"checked":""}><span>Předčítat dětem pokyny</span></label>
     <div class="stepper"><button id="vs" aria-label="Pomaleji">🐢</button><span><b id="vr">${Math.round(voiceCfg().rate*100)}</b> %</span><button id="vf" aria-label="Rychleji">🐇</button></div>
@@ -720,7 +742,9 @@ function parentPanel(){
   P.querySelectorAll("[data-ok]").forEach(b=>b.onclick=()=>{confirmTask(b.dataset.ok);parentPanel()});
   P.querySelectorAll("[data-no]").forEach(b=>b.onclick=()=>{delete today().tasks[b.dataset.no];save();parentPanel()});
   if($("#all"))$("#all").onclick=()=>{pend.forEach(t=>confirmTask(t.id));parentPanel()};
-  $("#editT").onclick=()=>taskEditor();
+  $("#editT").onclick=()=>taskEditor();$("#planT").onclick=()=>planSheet(1);
+  const setMax=v=>{kid.dailyMax=Math.max(1,Math.min(12,v));$("#dv").textContent=kid.dailyMax;save()};
+  $("#dm").onclick=()=>setMax(dailyMax()-1);$("#dp").onclick=()=>setMax(dailyMax()+1);
   const setEvery=v=>{kid.fishEvery=Math.max(5,Math.min(100,v));$("#fv").textContent=kid.fishEvery;save()};
   $("#fm").onclick=()=>setEvery((kid.fishEvery||15)-5);$("#fp").onclick=()=>setEvery((kid.fishEvery||15)+5);
   if($("#logout"))$("#logout").onclick=()=>{sheetClose=null;closeSheet();logout()};
@@ -735,19 +759,19 @@ function parentPanel(){
   let armed=false;$("#delKid").onclick=()=>{if(!armed){armed=true;$("#rhint").textContent="Ťukni znovu. Smaže se profil, rybky i perličky a nejde to vrátit.";return}
     S.kids=S.kids.filter(k=>k.id!==kid.id);save();sheetClose=null;closeSheet();renderProfiles();toast("Profil smazán")};
 }
-function overLimit(tasks){for(const [n,l] of DAYS){if(tasks.filter(t=>t.on&&t.days.includes(n)).length>MAX_PER_DAY)return l}return null}
+function tierLabel(t){return t.tier==="bonus"?"další":"základní"}
 function backToBoard(){if(kid&&screenName==="main"){refreshChips();showTab()}}
 function taskEditor(){
   const list=kidTasks();
-  openSheet(head("Úkoly: "+esc(kid.name))+`<div class="center"><p class="lead">Zapni, vypni nebo uprav úkoly a nastav, ve které dny platí. Na jeden den jde nejvýš ${MAX_PER_DAY} úkolů. Zlatá tabule je, když jsou potvrzené všechny dnešní.</p>
-   <div class="plist">${list.map((t,i)=>`<div class="prow ${t.on?"":"off"}"><span class="ic">${t.icon}</span><span class="t">${esc(t.name)}<small>${daysLabel(t.days)} · +${t.reward}${t.game?" · "+(MINIGAMES.find(m=>m.id===t.game)||{}).name:" · bez mini-hry"}</small></span>
+  openSheet(head("Úkoly: "+esc(kid.name))+`<div class="center"><p class="lead">Zapni, vypni nebo uprav úkoly a nastav, ve které dny platí. Základní úkoly dítě vidí hned, další se odemknou po jejich splnění. Za den nejvýš ${dailyMax()} úkolů (nastavíš v rodičovském režimu).</p>
+   <div class="plist">${list.map((t,i)=>`<div class="prow ${t.on?"":"off"}"><span class="ic">${t.icon}</span><span class="t">${esc(t.name)}<small><span class="tier ${t.tier==="bonus"?"b":"z"}">${tierLabel(t)}</span> ${daysLabel(t.days)} · +${t.reward}${t.game?" · "+(MINIGAMES.find(m=>m.id===t.game)||{}).name:" · bez mini-hry"}</small></span>
      <button class="mini" data-up="${t.id}" aria-label="Posunout výš" ${i?"":"disabled"}>↑</button>
      <button class="switch" role="switch" aria-checked="${t.on}" data-tog="${t.id}" aria-label="${t.on?"Vypnout":"Zapnout"} ${esc(t.name)}"></button>
      <button class="btn ghost small" data-ed="${t.id}">Upravit</button></div>`).join("")}</div>
    <p class="hint" id="thint"></p>
    <div class="tools"><button class="btn kelp" id="addC">Přidat z nabídky</button><button class="btn sea" id="addT">Vlastní úkol</button><button class="btn ghost" data-close>Hotovo</button></div></div>`,backToBoard);
   const P=$("#panel");
-  P.querySelectorAll("[data-tog]").forEach(b=>b.onclick=()=>{const L=kidTasks();const t=L.find(x=>x.id===b.dataset.tog);if(!t){taskEditor();return}t.on=!t.on;const over=overLimit(L);if(over){t.on=!t.on;$("#thint").textContent="V "+over+" už je "+MAX_PER_DAY+" úkolů. Nejdřív jiný vypni nebo uber dny.";return}save();taskEditor()});
+  P.querySelectorAll("[data-tog]").forEach(b=>b.onclick=()=>{const L=kidTasks();const t=L.find(x=>x.id===b.dataset.tog);if(!t){taskEditor();return}t.on=!t.on;save();taskEditor()});
   P.querySelectorAll("[data-up]").forEach(b=>b.onclick=()=>{const L=kidTasks();const i=L.findIndex(x=>x.id===b.dataset.up);if(i<1)return;[L[i-1],L[i]]=[L[i],L[i-1]];save();taskEditor()});
   P.querySelectorAll("[data-ed]").forEach(b=>b.onclick=()=>taskForm(b.dataset.ed));
   $("#addT").onclick=()=>taskForm(null);$("#addC").onclick=()=>catalogSheet();
@@ -760,6 +784,8 @@ function taskForm(tid){
    <label class="field">Název<input id="tn" maxlength="28" value="${esc(t.name)}" placeholder="Např. Nakrmit kočku"></label>
    <label class="field">Krátký popis pro dítě<input id="td" maxlength="70" value="${esc(t.desc||"")}" placeholder="Co přesně má udělat"></label>
    <p class="lead">Obrázek</p><div class="icons">${(ICONS.includes(t.icon)?ICONS:[t.icon].concat(ICONS)).map(ic=>`<button data-ic="${ic}" aria-pressed="${ic===t.icon}">${ic}</button>`).join("")}</div>
+   <p class="lead">Druh úkolu</p><div class="seg" role="tablist"><button type="button" role="tab" data-tier="zaklad" aria-selected="${t.tier!=="bonus"}">Základní</button><button type="button" role="tab" data-tier="bonus" aria-selected="${t.tier==="bonus"}">Další</button></div>
+   <p class="hint" id="tiernote">${t.tier==="bonus"?"Ukáže se, až dítě splní všechny základní úkoly dne.":"Dítě ho vidí hned po otevření tabule."}</p>
    <label class="check"><input type="checkbox" id="tg" ${t.game?"checked":""}><span>Obsahuje mini-hru</span></label>
    <div class="games" id="gpick" ${t.game?"":"hidden"}>${MINIGAMES.map(m=>`<button data-g="${m.id}" aria-pressed="${m.id===t.game}"><span>${m.icon}</span><b>${m.name}</b><small>${m.desc}</small></button>`).join("")}</div>
    <div id="gparams"></div>
@@ -770,6 +796,7 @@ function taskForm(tid){
    <p class="say" id="fhint"></p>
    <div class="tools"><button class="btn kelp" id="tsave">Uložit</button>${!isNew?'<button class="btn ghost" id="tdel">Smazat úkol</button>':""}</div></div>`,taskEditor);
   const P=$("#panel");
+  P.querySelectorAll("[data-tier]").forEach(b=>b.onclick=()=>{t.tier=b.dataset.tier;P.querySelectorAll("[data-tier]").forEach(x=>x.setAttribute("aria-selected",x===b));$("#tiernote").textContent=t.tier==="bonus"?"Ukáže se, až dítě splní všechny základní úkoly dne.":"Dítě ho vidí hned po otevření tabule."});
   const paintDays=()=>P.querySelectorAll("[data-day]").forEach(b=>b.setAttribute("aria-pressed",t.days.includes(+b.dataset.day)));
   P.querySelectorAll("[data-ic]").forEach(b=>b.onclick=()=>{t.icon=b.dataset.ic;P.querySelectorAll("[data-ic]").forEach(x=>x.setAttribute("aria-pressed",x===b))});
   const paramsHTML=()=>t.game==="plavba"?`<div class="fishset"><b>Délka plavby</b><div class="stepper"><button id="mm" aria-label="Méně">−</button><span><b id="mv">${t.minutes||10}</b> min</span><button id="mp" aria-label="Více">+</button></div></div>`
@@ -788,8 +815,7 @@ function taskForm(tid){
   $("#tsave").onclick=()=>{t.name=$("#tn").value.trim();t.desc=$("#td").value.trim();if($("#stps")){t.steps=$("#stps").value.split("\n").map(x=>x.trim()).filter(Boolean).slice(0,12);if(!t.steps.length){$("#fhint").textContent="Napiš aspoň jeden krok";return}}
     if(!t.name){$("#fhint").textContent="Napiš název úkolu";$("#tn").focus();return}
     if(!t.days.length){$("#fhint").textContent="Vyber aspoň jeden den";return}
-    const L=kidTasks();const next=L.slice();const idx=next.findIndex(x=>x.id===t.id);if(idx>=0)next[idx]=t;else next.push(t);const over=overLimit(next);
-    if(over){$("#fhint").textContent="V "+over+" by bylo víc než "+MAX_PER_DAY+" úkolů. Uber dny nebo jiný úkol vypni.";return}
+    const L=kidTasks();const idx=L.findIndex(x=>x.id===t.id);
     if(idx>=0)L[idx]=t;else L.push(t);save();toast(isNew?"Úkol přidán":"Uloženo");taskEditor()};
   let armed=false;if($("#tdel"))$("#tdel").onclick=()=>{if(!armed){armed=true;$("#fhint").textContent="Ťukni znovu pro smazání úkolu.";return}const L=kidTasks();const idx=L.findIndex(x=>x.id===t.id);if(idx>=0)L.splice(idx,1);const d=today();delete d.tasks[t.id];save();toast("Úkol smazán");taskEditor()};
 }
@@ -1047,17 +1073,51 @@ function setupTank(first){
   render();
 }
 
+/* ============ EXTRAS: day planner ============ */
+function planSheet(off){
+  off=Math.max(0,Math.min(6,off|0));prunePlans(kid);
+  const P0=dayPlan(off);const all=kidTasks();const key=P0.key;
+  const plan=kid.plans&&kid.plans[key];
+  const inPlan=new Set(P0.all.map(t=>t.id));const baseSet=new Set(P0.base.map(t=>t.id));
+  const order=plan?(plan.tasks||[]).slice():all.filter(t=>inPlan.has(t.id)).map(t=>t.id);
+  const rest=all.filter(t=>!order.includes(t.id)).map(t=>t.id);const ordered=order.concat(rest).map(id=>all.find(t=>t.id===id)).filter(Boolean);
+  const dn=P0.date.toLocaleDateString("cs-CZ",{weekday:"long",day:"numeric",month:"long"});
+  const chips=[0,1,2,3,4,5,6].map(o=>{const dt=dateOf(o);const l=o===0?"Dnes":o===1?"Zítra":DAYS.find(x=>x[0]===dt.getDay())[1]+" "+dt.getDate()+".";const has=kid.plans&&kid.plans[keyOf(dt)];return `<button class="chip-day ${has?"custom":""}" data-off="${o}" aria-pressed="${o===off}">${l}</button>`}).join("");
+  const nb=P0.base.length,ne=P0.extra.length,over=all.filter(t=>inPlan.has(t.id)).length>P0.max;
+  openSheet(head("Plán dne")+`<div class="center">
+   <div class="daychips">${chips}</div>
+   <p class="lead"><b>${dn}</b><br>${P0.custom?"Upraveno ručně pro tento den.":"Podle týdenního rozvrhu úkolů."}</p>
+   <p class="hint">Zaškrtni, co má dítě ten den na tabuli. Základní úkoly vidí hned, další se odemknou po jejich splnění. Šipkou měníš pořadí.</p>
+   <div class="plist">${ordered.map((t,i)=>{const on=inPlan.has(t.id);const isBase=on?baseSet.has(t.id):t.tier!=="bonus";return `<div class="prow ${on?"":"off"}">
+     <label class="check tiny"><input type="checkbox" data-in="${t.id}" ${on?"checked":""}><span class="ic">${t.icon}</span></label>
+     <span class="t">${esc(t.name)}<small>${t.on?"":"v rozvrhu vypnutý · "}+${t.reward}</small></span>
+     <div class="seg mini" role="tablist"><button type="button" data-pt="${t.id}" data-v="zaklad" aria-selected="${isBase}" ${on?"":"disabled"}>Zákl.</button><button type="button" data-pt="${t.id}" data-v="bonus" aria-selected="${!isBase}" ${on?"":"disabled"}>Další</button></div>
+     <button class="mini" data-pup="${t.id}" aria-label="Posunout výš" ${i?"":"disabled"}>↑</button></div>`}).join("")}</div>
+   <p class="say" id="pcount">${nb} základní + ${ne} další, nejvýš ${P0.max} za den${over?" · co je navíc, se nezobrazí":""}</p>
+   <div class="tools">${P0.custom?'<button class="btn ghost" id="pReset">Vrátit na rozvrh</button>':""}<button class="btn ghost" id="pAdd">Vlastní úkol</button><button class="btn kelp" id="pDone">Hotovo</button></div></div>`,()=>parentPanel());
+  const Pn=$("#panel");
+  const commit=(ids,bases)=>{kid.plans=kid.plans||{};kid.plans[key]={tasks:ids,base:bases};save();planSheet(off)};
+  const current=()=>{const ids=[];const bases=[];Pn.querySelectorAll("[data-in]").forEach(cb=>{if(cb.checked){ids.push(cb.dataset.in);const b=Pn.querySelector(`[data-pt="${cb.dataset.in}"][data-v="zaklad"]`);if(b&&b.getAttribute("aria-selected")==="true")bases.push(cb.dataset.in)}});return {ids,bases}};
+  Pn.querySelectorAll("[data-in]").forEach(cb=>cb.onchange=()=>{const c=current();commit(c.ids,c.bases)});
+  Pn.querySelectorAll("[data-pt]").forEach(b=>b.onclick=()=>{Pn.querySelectorAll(`[data-pt="${b.dataset.pt}"]`).forEach(x=>x.setAttribute("aria-selected",x===b));const c=current();commit(c.ids,c.bases)});
+  Pn.querySelectorAll("[data-pup]").forEach(b=>b.onclick=()=>{const c=current();const allIds=ordered.map(t=>t.id);const i=allIds.indexOf(b.dataset.pup);if(i<1)return;[allIds[i-1],allIds[i]]=[allIds[i],allIds[i-1]];commit(allIds.filter(id=>c.ids.includes(id)),c.bases)});
+  Pn.querySelectorAll("[data-off]").forEach(b=>b.onclick=()=>planSheet(+b.dataset.off));
+  if($("#pReset"))$("#pReset").onclick=()=>{if(kid.plans)delete kid.plans[key];save();planSheet(off)};
+  $("#pAdd").onclick=()=>{taskForm(null);sheetClose=()=>planSheet(off)};
+  $("#pDone").onclick=()=>{sheetClose=null;closeSheet();parentPanel()};
+}
+
 /* ============ EXTRAS: points ============ */
 function addFishPts(n){kid.fishPts=(kid.fishPts||0)+n;const every=kid.fishEvery||15;while(kid.fishPts>=every){kid.fishPts-=every;kid.eggs=(kid.eggs||0)+1}}
 function confirmTask(id){const d=today();if(d.tasks[id]!=="pending")return;d.tasks[id]="confirmed";const t=findTask(id);const pts=t.reward||1;
   kid.pearls+=pts;kid.points=(kid.points||0)+pts;
   if(!kid.fish.length){if(!kid.eggs)kid.eggs=1}else addFishPts(pts);
-  const list=todaysTasks();if(!d.golden&&list.length&&list.every(x=>d.tasks[x.id]==="confirmed")){d.golden=true;kid.pearls+=GOLD_BONUS;kid.points+=GOLD_BONUS;if(kid.fish.length)addFishPts(GOLD_BONUS)}
+  const list=coreTasks();if(!d.golden&&list.length&&list.every(x=>d.tasks[x.id]==="confirmed")){d.golden=true;kid.pearls+=GOLD_BONUS;kid.points+=GOLD_BONUS;if(kid.fish.length)addFishPts(GOLD_BONUS)}
   save();refreshChips();blip(880)}
 function fishProgressHTML(){const every=kid.fishEvery||15,have=kid.fishPts||0;
   if(kid.eggs>0)return `<div class="golden ready"><div class="egg wob"></div><div class="gp"><h3>${kid.fish.length?"Máš vajíčko!":"Tvoje první rybka je ve vajíčku!"}</h3><p>Ťukni a vylíhni novou rybku.</p></div><button class="btn" id="hatchBtn">Vylíhnout</button></div>`;
   if(!kid.fish.length)return `<div class="golden"><div class="egg"></div><div><h3>Tvoje první rybka je ještě ve vajíčku</h3><p>Splň jakýkoli úkol a nech ho potvrdit rodičem. Pak se vylíhne.</p></div></div>`;
-  const d=today();return `<div class="golden"><div class="egg"></div><div class="gp"><h3>Do další rybky: ${have} z ${every} bodů</h3><div class="fbar"><b style="width:${Math.min(100,have/every*100)}%"></b></div><p>${d.golden?"Zlatá tabule! Dnes +"+GOLD_BONUS+" body navíc.":"Za každý potvrzený úkol dostaneš body. Za splnění všech dnešních úkolů +"+GOLD_BONUS+" navíc."}</p></div></div>`}
+  const d=today();return `<div class="golden"><div class="egg"></div><div class="gp"><h3>Do další rybky: ${have} z ${every} bodů</h3><div class="fbar"><b style="width:${Math.min(100,have/every*100)}%"></b></div><p>${d.golden?"Zlatá tabule! Dnes +"+GOLD_BONUS+" body navíc.":"Za každý potvrzený úkol dostaneš body. Za všechny základní úkoly za den +"+GOLD_BONUS+" navíc."}</p></div></div>`}
 
 /* ============ EXTRAS: task catalog ============ */
 const CATALOG=[
@@ -1085,12 +1145,12 @@ const CATALOG=[
 ];
 function catalogSheet(){
   const list=kidTasks();const have=new Set(list.map(t=>t.cat||t.id));
-  openSheet(head("Nabídka úkolů")+`<div class="center"><p class="lead">Ťukni na Přidat. Úkol se objeví v seznamu a můžeš mu pak upravit dny i odměnu.</p>
+  openSheet(head("Nabídka úkolů")+`<div class="center"><p class="lead">Ťukni na Přidat. Úkol se přidá jako „další“ (odemkne se po základních). Dny, odměnu i druh pak upravíš.</p>
    <div class="plist">${CATALOG.map(c=>`<div class="prow"><span class="ic">${c.icon}</span><span class="t">${c.name}<small>${(MINIGAMES.find(m=>m.id===c.game)||{}).name||""} · +${c.reward}${c.days?" · Po–Pá":""}</small></span><button class="btn ${have.has(c.cat)?"ghost":"kelp"} small" data-cat="${c.cat}" ${have.has(c.cat)?"disabled":""}>${have.has(c.cat)?"Máš":"Přidat"}</button></div>`).join("")}</div>
    <p class="hint" id="chint"></p><button class="btn ghost" id="cdone">Zpět na úkoly</button></div>`,taskEditor);
   $("#panel").querySelectorAll("[data-cat]").forEach(b=>b.onclick=()=>{const c=CATALOG.find(x=>x.cat===b.dataset.cat);
-    const t=Object.assign({},c,{id:"t"+Date.now().toString(36)+c.cat,on:true,days:(c.days||ALL_DAYS).slice(),steps:c.steps?c.steps.slice():undefined});
-    const L=kidTasks();L.push(t);let note="Přidáno: "+c.name;if(overLimit(L)){t.on=false;note=c.name+" je přidaný, ale vypnutý: v některý den už je "+MAX_PER_DAY+" úkolů."}
+    const t=Object.assign({},c,{id:"t"+Date.now().toString(36)+c.cat,on:true,tier:"bonus",days:(c.days||ALL_DAYS).slice(),steps:c.steps?c.steps.slice():undefined});
+    const L=kidTasks();L.push(t);let note="Přidáno jako další úkol: "+c.name+". Druh změníš v úpravě úkolu.";
     save();blip(700);b.textContent="Máš";b.disabled=true;b.classList.replace("kelp","ghost");$("#chint").textContent=note});
   $("#cdone").onclick=()=>taskEditor();
 }
