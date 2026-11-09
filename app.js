@@ -471,6 +471,7 @@ function renderLogin(mode){
     <p class="say" id="lerr" role="alert"></p>
     ${!reg&&!rec?`<button type="button" class="linkbtn" id="forgot">Zapomenuté heslo</button>`:""}
     ${rec?"":`<button type="button" class="linkbtn" id="skip">Vyzkoušet bez účtu (jen toto zařízení)</button>`}
+    ${rec&&cloud.user?`<button type="button" class="linkbtn" id="cancelpw">Zpět</button>`:""}
    </div></div></div>`;
   const err=t=>{$("#lerr").textContent=t||""};
   const cz=m=>/invalid login/i.test(m)?"Špatný e-mail nebo heslo.":/already registered|already exists/i.test(m)?"Účet s tímto e-mailem už existuje. Přihlas se, nebo použij Zapomenuté heslo.":/at least|short|weak/i.test(m)?"Heslo je moc krátké nebo slabé, zkus delší.":/not confirmed/i.test(m)?"Nejdřív potvrď e-mail. Stačí kliknout na odkaz v e-mailu na mobilu nebo počítači, pak se tady přihlas heslem.":/rate|seconds|limit/i.test(m)?"Moc pokusů najednou. Chvilku počkej.":/fetch|network/i.test(m)?"Chybí internet. Zkus to znovu.":m;
@@ -487,12 +488,13 @@ function renderLogin(mode){
     }catch(x){res={error:{message:String(x&&x.message||x)}}}
     btn.disabled=false;btn.textContent=label;
     if(res.error){err(cz(res.error.message));return}
-    if(rec){toast("Heslo je změněné");if(cloud.user)renderProfiles();return}
+    if(rec){toast("Heslo je změněné");renderProfiles();return}
     if(reg&&res.data&&!res.data.session){renderLogin("in");setTimeout(()=>{$("#lerr").textContent="Účet je vytvořený. Poslali jsme ti potvrzovací e-mail: klikni na odkaz v něm (klidně na mobilu nebo počítači). Pak se tady přihlas e-mailem a heslem."},0);return}
     try{localStorage.removeItem("akvarium-skip-login")}catch(x){}};
   if($("#forgot"))$("#forgot").onclick=async()=>{const em=$("#em").value.trim();if(!em){err("Nejdřív napiš e-mail.");$("#em").focus();return}
     const {error}=await SB.auth.resetPasswordForEmail(em,{redirectTo:location.origin+location.pathname});
     err(error?cz(error.message):"Poslali jsme e-mail s odkazem na nové heslo. Můžeš ho otevřít na mobilu nebo počítači.")};
+  if($("#cancelpw"))$("#cancelpw").onclick=()=>renderProfiles();
   if($("#skip"))$("#skip").onclick=()=>{try{localStorage.setItem("akvarium-skip-login","1")}catch(x){}cloud.mode="local";S=readLocal(LKEY)||blank();setSync("Bez účtu: postup se ukládá jen v tomto zařízení");renderProfiles()};
 }
 function goLogin(){try{localStorage.removeItem("akvarium-skip-login")}catch(e){}renderLogin()}
@@ -702,7 +704,7 @@ function parentPanel(){
     <button class="btn ghost small" id="vtest">Vyzkoušet hlas</button>
     <small>${!HAS_TTS?"Tento prohlížeč neumí předčítat.":CZ_VOICE?"Hlas: "+esc(CZ_VOICE.name):"Na zařízení chybí český hlas. Android: Nastavení → Usnadnění → Převod textu na řeč → Google → stáhnout češtinu."}</small></div>
    <h3 class="section-t" style="margin-bottom:0">Nástroje</h3>
-   <div class="tools">${CFG.testTools?'<button class="btn ghost small" id="nextDay">Test: další den</button>':""}<button class="btn ghost small" id="gift">Odměna navíc +10 perliček</button>${cloud.user?'<button class="btn ghost small" id="logout">Odhlásit rodinu z tohoto zařízení</button>':""}<button class="btn ghost small" id="delKid">Smazat profil ${esc(kid.name)}</button></div>
+   <div class="tools">${CFG.testTools?'<button class="btn ghost small" id="nextDay">Test: další den</button>':""}<button class="btn ghost small" id="gift">Odměna navíc +10 perliček</button>${cloud.user?'<button class="btn ghost small" id="chpw">Změnit heslo</button><button class="btn ghost small" id="logout">Odhlásit rodinu z tohoto zařízení</button>':""}<button class="btn ghost small" id="delKid">Smazat profil ${esc(kid.name)}</button></div>
    <p class="hint" id="rhint"></p></div>`,()=>{if(kid){refreshChips();if(kid.eggs>0){tab="board";showTab();setTimeout(hatch,200)}else showTab()}});
   const P=$("#panel");
   P.querySelectorAll("[data-ok]").forEach(b=>b.onclick=()=>{confirmTask(b.dataset.ok);parentPanel()});
@@ -712,6 +714,7 @@ function parentPanel(){
   const setEvery=v=>{kid.fishEvery=Math.max(5,Math.min(100,v));$("#fv").textContent=kid.fishEvery;save()};
   $("#fm").onclick=()=>setEvery((kid.fishEvery||15)-5);$("#fp").onclick=()=>setEvery((kid.fishEvery||15)+5);
   if($("#logout"))$("#logout").onclick=()=>{sheetClose=null;closeSheet();logout()};
+  if($("#chpw"))$("#chpw").onclick=()=>{sheetClose=null;closeSheet();renderLogin("newpass")};
   if($("#nextDay"))$("#nextDay").onclick=()=>{S.offset=(S.offset||0)+1;save();toast("Nový den, nová tabule");closeSheet()};
   const setV=o=>{S.voice=Object.assign(voiceCfg(),o);save()};
   $("#von").onchange=e=>setV({on:e.target.checked});

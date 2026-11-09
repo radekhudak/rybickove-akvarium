@@ -1,5 +1,5 @@
 /* Offline cache. Při každé úpravě souborů zvyš číslo verze. */
-const VERSION = "akvarium-v4";
+const VERSION = "akvarium-v5";
 const SHELL = [
   "./", "./index.html", "./app.js", "./config.js", "./manifest.webmanifest",
   "./vendor/three.min.js", "./vendor/supabase.js",
